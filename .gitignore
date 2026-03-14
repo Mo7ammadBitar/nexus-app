@@ -1,0 +1,37 @@
+# ========================
+# Nexus Monorepo - Root .gitignore
+# ========================
+
+# --- OS Generated Files ---
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Environment Variables (catch-all) ---
+.env
+.env.*
+*.env
+
+# --- Logs ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- User-Generated Uploads (avatars, banners, voice, docs) ---
+uploads/
+
+# --- Verification / Test Output Files ---
+*.txt
+!RUN_GUIDE.md

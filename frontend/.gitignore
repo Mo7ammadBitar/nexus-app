@@ -1,0 +1,40 @@
+# ========================
+# Nexus Frontend - React/Electron .gitignore
+# ========================
+
+# --- Environment Variables (CRITICAL) ---
+.env
+.env.*
+*.env
+
+# --- Dependencies ---
+node_modules/
+
+# --- Build Outputs ---
+build/
+dist/
+.next/
+out/
+
+# --- Electron Packaged Apps ---
+release/
+
+# --- Logs ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Testing ---
+coverage/
+.nyc_output/
+
+# --- One-off Utility Scripts (not part of the app) ---
+extract_i18n.js
+generate_translations.js
+remove_prefixes.js
+src/fix_urls.py
+src/locales/extracted.json
+
+# --- OS ---
+.DS_Store
+Thumbs.db

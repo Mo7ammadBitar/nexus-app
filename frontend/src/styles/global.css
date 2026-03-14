@@ -1,0 +1,379 @@
+/**
+ * NEXUS - Global Styles & Theming
+ * 
+ * CSS VARIABLE ARCHITECTURE (STRICT SEPARATION):
+ * 
+ * CLIENT THEME VARIABLES (set by theme_color):
+ *   --bg-primary, --bg-secondary, --bg-tertiary, --bg-quaternary
+ *   --sidebar-bg, --app-bg-gradient
+ *   --theme-gradient, --theme-glow, --active-item-bg
+ *   --scrollbar-thumb
+ * 
+ * PROFILE ACCENT VARIABLES (set by accent_color):
+ *   --user-accent, --user-accent-rgb, --user-accent-glow
+ *   (Used ONLY for: avatar border, username color, profile card border)
+ */
+
+:root {
+  /* ===== CLIENT THEME DEFAULTS ===== */
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-tertiary: #0f3460;
+  --bg-quaternary: #1e1e3f;
+  --sidebar-bg: #0f3460;
+  --app-bg-gradient: none;
+
+  /* Theme interactive elements (controlled by CLIENT THEME, not accent!) */
+  --theme-gradient: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  --theme-glow: rgba(124, 58, 237, 0.4);
+  --active-item-bg: rgba(124, 58, 237, 0.15);
+  --scrollbar-thumb: rgba(124, 58, 237, 0.4);
+
+  /* ===== PROFILE ACCENT DEFAULTS ===== */
+  --user-accent: #7c3aed;
+  --user-accent-rgb: 124, 58, 237;
+  --user-accent-glow: rgba(124, 58, 237, 0.6);
+
+  /* ===== TEXT & BORDERS ===== */
+  --text-primary: #ffffff;
+  --text-secondary: #b4b4b4;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --success: #10b981;
+
+  /* ===== TRANSITIONS ===== */
+  --theme-transition: background-color 0.3s ease, color 0.2s ease, border-color 0.3s ease;
+}
+
+/* ============================================
+   BODY & ROOT
+   ============================================ */
+body,
+#root {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  transition: var(--theme-transition);
+  background-image: var(--app-bg-gradient);
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+/* ============================================
+   SIDEBAR (Uses THEME, not accent)
+   ============================================ */
+.sidebar-container,
+[data-testid="sidebar"],
+nav {
+  background-color: var(--sidebar-bg) !important;
+  border-right: 1px solid var(--border-color);
+  transition: var(--theme-transition);
+}
+
+/* ============================================
+   MEMBER LIST & SECONDARY PANELS
+   ============================================ */
+.member-list,
+.channel-list,
+.header-bar {
+  background-color: var(--bg-secondary) !important;
+  transition: var(--theme-transition);
+}
+
+/* ============================================
+   INPUT FIELDS (Uses THEME for background)
+   ============================================ */
+input,
+textarea,
+.input-field {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color);
+  transition: var(--theme-transition);
+}
+
+/* Input focus uses THEME glow, not accent */
+input:focus,
+textarea:focus {
+  border-color: rgba(var(--user-accent-rgb), 0.5);
+  box-shadow: 0 0 0 2px rgba(var(--user-accent-rgb), 0.1);
+  outline: none;
+}
+
+/* ============================================
+   CARDS & MODALS
+   ============================================ */
+.card,
+.modal-content,
+.popover {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color);
+}
+
+/* ============================================
+   ACTIVE ITEMS (Uses THEME, not accent!)
+   ============================================ */
+.active-item,
+.selected-channel {
+  background-color: var(--active-item-bg) !important;
+  /* Accent border is okay for emphasis */
+  border-left: 3px solid rgba(var(--user-accent-rgb), 0.8);
+}
+
+/* ============================================
+   SCROLLBAR (Uses THEME)
+   ============================================ */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--bg-quaternary);
+}
+
+/* ============================================
+   SIDEBAR ICONS & BUTTONS (Uses THEME, not accent!)
+   ============================================ */
+.sidebar-icon,
+.nav-item,
+[data-testid="sidebar-button"] {
+  background-color: transparent;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+/* ACTIVE STATE - Uses THEME gradient */
+.sidebar-icon.active,
+.nav-item.active,
+.active-icon {
+  background: var(--theme-gradient) !important;
+  color: white !important;
+  box-shadow: 0 0 12px var(--theme-glow);
+}
+
+/* HOVER STATE - Uses THEME quaternary */
+.sidebar-icon:hover,
+.nav-item:hover {
+  background-color: var(--bg-quaternary) !important;
+  color: var(--text-primary);
+}
+
+/* Add Server Button */
+.add-server-btn {
+  background-color: var(--bg-secondary) !important;
+  color: var(--success);
+  transition: all 0.2s ease;
+}
+
+.add-server-btn:hover {
+  background-color: var(--success) !important;
+  color: white;
+}
+
+/* ============================================
+   CHANNEL & ITEM HOVERS (Uses THEME, not accent!)
+   ============================================ */
+.channel-item:hover,
+.member-item:hover,
+.friend-item:hover {
+  background-color: var(--active-item-bg) !important;
+  border-radius: 4px;
+}
+
+/* Active Channel */
+.channel-item.active {
+  background-color: var(--active-item-bg) !important;
+  color: white !important;
+  /* Small accent border for emphasis is okay */
+  border-left: 3px solid rgba(var(--user-accent-rgb), 0.6);
+}
+
+/* ============================================
+   USER-SPECIFIC ACCENT ELEMENTS
+   (These are the ONLY places --user-accent should be used)
+   ============================================ */
+
+/* User Avatar Border (in profile, member list) */
+.user-avatar-accent {
+  border-color: var(--user-accent) !important;
+  box-shadow: 0 0 12px var(--user-accent-glow);
+}
+
+/* Username with premium accent */
+.username-accent {
+  color: var(--user-accent);
+  text-shadow: 0 0 8px var(--user-accent-glow);
+}
+
+/* Profile Card Border */
+.profile-card-accent {
+  border-color: var(--user-accent);
+  box-shadow: 0 0 20px var(--user-accent-glow);
+}
+
+/* ============================================
+   ANIMATED PREMIUM FRAMES (CSS ONLY)
+   ============================================ */
+/* 1. Astral Vortex (Spinning Gradient) */
+.frame-astral-vortex {
+  position: relative;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.frame-astral-vortex::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  /* Expand outward for border thickness */
+  border-radius: 50%;
+  padding: 3px;
+  /* Mask padding defines the border width */
+  background: conic-gradient(#8f00ff, #00d2ff, #ff00aa, #8f00ff);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: spin-vortex 2.5s linear infinite;
+}
+
+@keyframes spin-vortex {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 2. Neon Pulse (Breathing Glow) */
+.frame-neon-pulse {
+  border: 3px solid #00ffa6;
+  border-radius: 50%;
+  animation: pulse-neon 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-neon {
+  0% {
+    box-shadow: 0 0 5px #00ffa6, inset 0 0 5px #00ffa6;
+  }
+
+  100% {
+    box-shadow: 0 0 20px #00ffa6, inset 0 0 15px #00ffa6;
+  }
+}
+
+/* 3. Inferno Ring (Flickering Fire) */
+.frame-inferno-ring {
+  border: 3px solid #ff4500;
+  border-radius: 50%;
+  animation: flicker-inferno 0.8s infinite alternate;
+}
+
+@keyframes flicker-inferno {
+  0% {
+    box-shadow: 0 0 10px #ff4500, inset 0 0 10px #ff4500;
+    border-color: #ff4500;
+  }
+
+  50% {
+    box-shadow: 0 0 25px #ff8c00, inset 0 0 15px #ff8c00;
+    border-color: #ff8c00;
+  }
+
+  100% {
+    box-shadow: 0 0 10px #ffd700, inset 0 0 5px #ffd700;
+    border-color: #ffd700;
+  }
+}
+
+/* ============================================
+   ANIMATED PREMIUM BUBBLES (CSS ONLY)
+   ============================================ */
+/* Shared Layout Properties for Bubbles */
+.bubble-astral-vortex,
+.bubble-neon-pulse,
+.bubble-inferno-ring {
+  padding: 12px 16px;
+  /* Pushes the border away from the avatar and text */
+  margin-bottom: 8px;
+  /* Adds space between consecutive messages */
+  border-radius: 12px;
+  /* Makes the corners rounded like a modern chat bubble */
+  background-color: rgba(0, 0, 0, 0.15);
+  /* Slight dark tint to make the text and glow pop */
+  box-sizing: border-box;
+}
+
+/* 1. Astral Vortex Bubble (Smooth Color Shifting Glow) */
+.bubble-astral-vortex {
+  border: 1px solid transparent;
+  animation: vortex-glow-bubble 3s linear infinite;
+}
+
+@keyframes vortex-glow-bubble {
+  0% {
+    box-shadow: 0 0 6px rgba(143, 0, 255, 0.5);
+    border-color: rgba(143, 0, 255, 0.7);
+  }
+
+  33% {
+    box-shadow: 0 0 6px rgba(0, 210, 255, 0.5);
+    border-color: rgba(0, 210, 255, 0.7);
+  }
+
+  66% {
+    box-shadow: 0 0 6px rgba(255, 0, 170, 0.5);
+    border-color: rgba(255, 0, 170, 0.7);
+  }
+
+  100% {
+    box-shadow: 0 0 6px rgba(143, 0, 255, 0.5);
+    border-color: rgba(143, 0, 255, 0.7);
+  }
+}
+
+/* 2. Neon Pulse Bubble (Soft Breathing Cyber Glow) */
+.bubble-neon-pulse {
+  border: 1px solid rgba(0, 255, 166, 0.6);
+  animation: pulse-neon-bubble 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-neon-bubble {
+  0% {
+    box-shadow: 0 0 2px rgba(0, 255, 166, 0.3);
+  }
+
+  100% {
+    box-shadow: 0 0 8px rgba(0, 255, 166, 0.6), inset 0 0 3px rgba(0, 255, 166, 0.1);
+  }
+}
+
+/* 3. Inferno Ring Bubble (Soft & Light Fire Flicker for Readability) */
+.bubble-inferno-ring {
+  border: 1px solid rgba(255, 69, 0, 0.5);
+  animation: flicker-inferno-bubble 0.8s infinite alternate;
+}
+
+@keyframes flicker-inferno-bubble {
+  0% {
+    box-shadow: 0 0 3px rgba(255, 69, 0, 0.3);
+    border-color: rgba(255, 69, 0, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 0 6px rgba(255, 140, 0, 0.4);
+    border-color: rgba(255, 140, 0, 0.6);
+  }
+
+  100% {
+    box-shadow: 0 0 3px rgba(255, 215, 0, 0.3);
+    border-color: rgba(255, 215, 0, 0.5);
+  }
+}

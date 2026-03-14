@@ -1,0 +1,17 @@
+{
+    "short_name": "Nexus",
+    "name": "Nexus - Voice & Text Chat",
+    "description": "A modern voice and text chat application",
+    "icons": [
+        {
+            "src": "favicon.png",
+            "sizes": "64x64 128x128 192x192 256x256 512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#580c85",
+    "background_color": "#1a1a2e"
+}
