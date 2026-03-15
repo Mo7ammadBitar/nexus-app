@@ -42,3 +42,4 @@ python-dotenv==1.0.0
 
 # ASGI Server
 websockets==12.0
+
