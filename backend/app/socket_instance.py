@@ -8,7 +8,11 @@ import socketio
 # async_mode='asgi' is essential for integration with FastAPI
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins="*",  # Configure properly in production
+    cors_allowed_origins=[
+        "http://localhost:3000",
+        "http://localhost:5000",
+        "https://nexus-app-blond.vercel.app",
+    ],
     logger=False,
     engineio_logger=False
 )

@@ -111,10 +111,16 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Middleware
+# CORS Middleware — must list explicit origins when credentials are used
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",   # React dev server
+    "http://localhost:5000",   # Alternate dev
+    "https://nexus-app-blond.vercel.app",  # Vercel production
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure properly in production
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
