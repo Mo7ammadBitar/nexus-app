@@ -8,6 +8,7 @@ import { Crown, Shield, VolumeX, User, Volume2, UserX } from 'lucide-react'; // 
 import { useTranslation } from 'react-i18next';
 import { getAuraRingStyle, getAuraNameStyle, injectAuraAnimations } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
+import { resolveAssetUrl } from '../../config';
 
 // Inline styles for frame relics
 const FRAME_INLINE_STYLES = {
@@ -159,7 +160,7 @@ const MemberList = () => {
                         ]}>
                             {member.avatar_url ? (
                                 <img
-                                    src={((member.avatar_url)?.startsWith('http') ? (member.avatar_url) : `http://localhost:8000${member.avatar_url}`)}
+                                    src={resolveAssetUrl(member.avatar_url)}
                                     style={{ width: '100%', height: '100%', borderRadius: '50%', pointerEvents: 'none' }}
                                     alt=""
                                 />

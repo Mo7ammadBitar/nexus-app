@@ -76,7 +76,36 @@ ipcMain.on('update-badge-count', (event, count, dataUrl) => {
     }
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+    // --- Content Security Policy ---
+    // Allow connections to both localhost (dev) and Azure (prod)
+    const { session } = require('electron');
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        callback({
+            responseHeaders: {
+                ...details.responseHeaders,
+                'Content-Security-Policy': [
+                    "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; " +
+                    "connect-src 'self' " +
+                        "http://localhost:* ws://localhost:* " +
+                        "https://nexus-backend-api-1-e8dabjgja2gqfdh2.spaincentral-01.azurewebsites.net " +
+                        "wss://nexus-backend-api-1-e8dabjgja2gqfdh2.spaincentral-01.azurewebsites.net " +
+                        "https://*.cloudinary.com " +
+                        "https://www.paypal.com https://www.sandbox.paypal.com; " +
+                    "img-src 'self' data: blob: http://localhost:* " +
+                        "https://nexus-backend-api-1-e8dabjgja2gqfdh2.spaincentral-01.azurewebsites.net " +
+                        "https://*.cloudinary.com https://*; " +
+                    "media-src 'self' blob: http://localhost:* " +
+                        "https://nexus-backend-api-1-e8dabjgja2gqfdh2.spaincentral-01.azurewebsites.net; " +
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://www.sandbox.paypal.com; " +
+                    "frame-src 'self' https://www.paypal.com https://www.sandbox.paypal.com;"
+                ]
+            }
+        });
+    });
+
+    createWindow();
+});
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {

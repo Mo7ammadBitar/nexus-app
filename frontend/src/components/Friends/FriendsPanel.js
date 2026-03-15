@@ -5,6 +5,7 @@ import { MessageSquare, X, Users, Inbox, Send, Check, Hourglass } from 'lucide-r
 import { getAuraRingStyle, getAuraNameStyle, injectAuraAnimations } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
 import { useTranslation } from 'react-i18next';
+import { resolveAssetUrl } from '../../config';
 
 // Inline styles for frame relics
 const FRAME_INLINE_STYLES = {
@@ -138,7 +139,7 @@ const FriendsPanel = ({ onClose, onOpenDM }) => {
                                     }}>
                                         {friend.avatar_url ? (
                                             <img
-                                                src={((friend.avatar_url)?.startsWith('http') ? (friend.avatar_url) : `http://localhost:8000${friend.avatar_url}`)}
+                                                src={resolveAssetUrl(friend.avatar_url)}
                                                 style={styles.avatarImage}
                                                 alt=""
                                             />
@@ -203,7 +204,7 @@ const FriendsPanel = ({ onClose, onOpenDM }) => {
                             <div style={styles.avatar}>
                                 {request.requester?.avatar_url ? (
                                     <img
-                                        src={((request.requester.avatar_url)?.startsWith('http') ? (request.requester.avatar_url) : `http://localhost:8000${request.requester.avatar_url}`)}
+                                        src={resolveAssetUrl(request.requester.avatar_url)}
                                         style={styles.avatarImage}
                                         alt=""
                                     />
@@ -258,7 +259,7 @@ const FriendsPanel = ({ onClose, onOpenDM }) => {
                             <div style={styles.avatar}>
                                 {request.receiver?.avatar_url ? (
                                     <img
-                                        src={((request.receiver.avatar_url)?.startsWith('http') ? (request.receiver.avatar_url) : `http://localhost:8000${request.receiver.avatar_url}`)}
+                                        src={resolveAssetUrl(request.receiver.avatar_url)}
                                         style={styles.avatarImage}
                                         alt=""
                                     />

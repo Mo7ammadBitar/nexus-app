@@ -61,6 +61,7 @@ const TypingDotsIndicator = () => (
 import { getAuraRingStyle, getAuraNameStyle } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
 import { useTranslation } from 'react-i18next';
+import { resolveAssetUrl } from '../../config';
 
 // Inline styles for frame relics
 const FRAME_INLINE_STYLES = {
@@ -143,7 +144,7 @@ const FriendsSidebar = ({ onOpenDM, onOpenRequests }) => {
 
                                     {friend.avatar_url ? (
                                         <img
-                                            src={((friend.avatar_url)?.startsWith('http') ? (friend.avatar_url) : `http://localhost:8000${friend.avatar_url}`)}
+                                            src={resolveAssetUrl(friend.avatar_url)}
                                             style={{ ...styles.avatarImage, position: 'relative', zIndex: 2 }}
                                             alt=""
                                         />

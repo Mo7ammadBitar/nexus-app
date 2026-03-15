@@ -7,6 +7,7 @@ import { useVoiceStore } from '../../store/voiceStore';
 import { useUIStore } from '../../store/uiStore';
 import { useAuthStore } from '../../store/authStore';
 import { declineDMCall, acceptDMCall } from '../../services/socket';
+import { resolveAssetUrl } from '../../config';
 
 // A simple modern ringtone using base64 audio
 // A classic electronic ringtone loop
@@ -103,7 +104,7 @@ const IncomingCallModal = () => {
                 <View style={styles.avatarContainer}>
                     {incomingCall.caller_avatar ? (
                         <img
-                            src={incomingCall.caller_avatar.startsWith('http') ? incomingCall.caller_avatar : `http://localhost:8000${incomingCall.caller_avatar}`}
+                            src={resolveAssetUrl(incomingCall.caller_avatar)}
                             style={styles.avatarImage}
                             alt="Avatar"
                         />

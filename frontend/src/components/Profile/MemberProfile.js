@@ -8,6 +8,7 @@ import { Crown, Check, Hourglass, AlertCircle, UserPlus, MessageSquare, X, Shiel
 import { useTranslation } from 'react-i18next';
 import { getAuraRingStyle, getAuraNameStyle, injectAuraAnimations } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
+import { resolveAssetUrl } from '../../config';
 
 // Inline styles for frame relics
 const FRAME_INLINE_STYLES = {
@@ -335,7 +336,7 @@ const MemberProfile = ({ userId, serverRole, onClose }) => {
                         <div style={{ ...styles.banner, ...getBannerStyle() }}>
                             {user.banner_url ? (
                                 <img
-                                    src={((user.banner_url)?.startsWith('http') ? (user.banner_url) : `http://localhost:8000${user.banner_url}`)}
+                                    src={resolveAssetUrl(user.banner_url)}
                                     style={styles.bannerImage}
                                     alt=""
                                 />
@@ -382,7 +383,7 @@ const MemberProfile = ({ userId, serverRole, onClose }) => {
 
                                         {user.avatar_url ? (
                                             <img
-                                                src={((user.avatar_url)?.startsWith('http') ? (user.avatar_url) : `http://localhost:8000${user.avatar_url}`)}
+                                                src={resolveAssetUrl(user.avatar_url)}
                                                 style={styles.avatarImage}
                                                 alt=""
                                             />

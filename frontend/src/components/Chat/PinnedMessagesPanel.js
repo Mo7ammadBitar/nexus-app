@@ -6,6 +6,7 @@ import { useFriendsStore } from '../../store/friendsStore';
 import { useTranslation } from 'react-i18next';
 import MarkdownText from './MarkdownText';
 import { generateMessageLink } from '../../utils/messageLinkUtils';
+import { resolveAssetUrl } from '../../config';
 
 const PinnedMessagesPanel = ({ isOpen, onClose, type, sourceId }) => { // type: 'channel' | 'dm'
     const { t } = useTranslation();
@@ -85,7 +86,7 @@ const PinnedMessagesPanel = ({ isOpen, onClose, type, sourceId }) => { // type: 
                                     <View style={styles.userInfo}>
                                         {msg.author_avatar_url || msg.sender_avatar_url ? (
                                             <img
-                                                src={((msg.author_avatar_url || msg.sender_avatar_url)?.startsWith('http') ? (msg.author_avatar_url || msg.sender_avatar_url) : `http://localhost:8000${msg.author_avatar_url || msg.sender_avatar_url}`)}
+                                                src={((msg.author_avatar_url || msg.sender_avatar_url)?.startsWith('http') ? (msg.author_avatar_url || msg.sender_avatar_url) : resolveAssetUrl(msg.author_avatar_url || msg.sender_avatar_url))}
                                                 style={styles.avatar}
                                                 alt=""
                                             />

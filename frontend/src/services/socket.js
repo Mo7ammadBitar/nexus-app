@@ -1,7 +1,8 @@
 import { io } from 'socket.io-client';
 import { useTypingStore } from '../store/typingStore';
+import { SOCKET_BASE_URL } from '../config';
 
-const SOCKET_URL = 'http://localhost:8000';
+const SOCKET_URL = SOCKET_BASE_URL;
 
 // Chat Socket
 let chatSocket = null;

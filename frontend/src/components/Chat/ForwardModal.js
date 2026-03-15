@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet } from 'react-native-web';
 import { useTranslation } from 'react-i18next';
 import { serversAPI, messagesAPI, dmAPI, friendsAPI } from '../../services/api';
+import { resolveAssetUrl } from '../../config';
 
 /**
  * ForwardModal - Modal for selecting forward destination
@@ -181,7 +182,7 @@ const ForwardModal = ({ isOpen, onClose, message, sourceType, onForwarded }) => 
                                         <View style={styles.serverIcon}>
                                             {server.icon_url ? (
                                                 <img
-                                                    src={((server.icon_url)?.startsWith('http') ? (server.icon_url) : `http://localhost:8000${server.icon_url}`)}
+                                                    src={resolveAssetUrl(server.icon_url)}
                                                     style={{ width: '100%', height: '100%', borderRadius: 8 }}
                                                     alt=""
                                                 />
@@ -232,7 +233,7 @@ const ForwardModal = ({ isOpen, onClose, message, sourceType, onForwarded }) => 
                                     <View style={styles.friendAvatar}>
                                         {friend.avatar_url ? (
                                             <img
-                                                src={((friend.avatar_url)?.startsWith('http') ? (friend.avatar_url) : `http://localhost:8000${friend.avatar_url}`)}
+                                                src={resolveAssetUrl(friend.avatar_url)}
                                                 style={{ width: '100%', height: '100%', borderRadius: '50%' }}
                                                 alt=""
                                             />

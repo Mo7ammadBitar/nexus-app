@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native-web';
 import { useTranslation } from 'react-i18next';
 import { starredAPI } from '../../services/api';
+import { resolveAssetUrl } from '../../config';
 
 const StarredMessagesPanel = ({ onClose }) => {
     const { t, i18n } = useTranslation();
@@ -89,7 +90,7 @@ const StarredMessagesPanel = ({ onClose }) => {
                                         <View style={styles.senderAvatar}>
                                             {msg.sender_avatar_url ? (
                                                 <img
-                                                    src={((msg.sender_avatar_url)?.startsWith('http') ? (msg.sender_avatar_url) : `http://localhost:8000${msg.sender_avatar_url}`)}
+                                                    src={resolveAssetUrl(msg.sender_avatar_url)}
                                                     style={{ width: '100%', height: '100%', borderRadius: '50%' }}
                                                     alt=""
                                                 />
@@ -124,7 +125,7 @@ const StarredMessagesPanel = ({ onClose }) => {
                                                 <View key={i} style={styles.attachment}>
                                                     {att.type === 'image' ? (
                                                         <img
-                                                            src={((att.url)?.startsWith('http') ? (att.url) : `http://localhost:8000${att.url}`)}
+                                                            src={resolveAssetUrl(att.url)}
                                                             style={{ maxWidth: 200, borderRadius: 8 }}
                                                             alt=""
                                                         />

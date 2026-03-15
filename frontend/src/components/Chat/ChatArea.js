@@ -24,6 +24,7 @@ import {
     getAuraHolographicStyle
 } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
+import { resolveAssetUrl } from '../../config';
 
 // Role badge config: maps server role → display label + color
 const ROLE_BADGES = {
@@ -811,7 +812,7 @@ const ChatArea = () => {
                                     <View style={{ width: '100%', height: '100%', borderRadius: '50%', zIndex: 2, position: 'relative' }}>
                                         {msg.avatar_url ? (
                                             <img
-                                                src={((msg.avatar_url)?.startsWith('http') ? (msg.avatar_url) : `http://localhost:8000${msg.avatar_url}`)}
+                                                src={resolveAssetUrl(msg.avatar_url)}
                                                 style={{ width: '100%', height: '100%', borderRadius: '50%', cursor: 'pointer' }}
                                                 alt=""
                                             />
@@ -925,13 +926,13 @@ const ChatArea = () => {
                                                         <View key={i} style={styles.attachment}>
                                                             {att.type === 'voice' ? (
                                                                 <VoiceMessagePlayer
-                                                                    url={((att.url)?.startsWith('http') ? (att.url) : `http://localhost:8000${att.url}`)}
+                                                                    url={resolveAssetUrl(att.url)}
                                                                     duration={att.metadata?.duration}
                                                                 />
                                                             ) : att.type === 'image' ? (
-                                                                <img src={((att.url)?.startsWith('http') ? (att.url) : `http://localhost:8000${att.url}`)} style={{ maxWidth: 300, borderRadius: 8 }} alt="" />
+                                                                <img src={resolveAssetUrl(att.url)} style={{ maxWidth: 300, borderRadius: 8 }} alt="" />
                                                             ) : (
-                                                                <TouchableOpacity onPress={() => window.open(((att.url)?.startsWith('http') ? (att.url) : `http://localhost:8000${att.url}`), '_blank')}>
+                                                                <TouchableOpacity onPress={() => window.open(resolveAssetUrl(att.url), '_blank')}>
                                                                     <Text style={styles.attachmentName}>📎 {att.filename}</Text>
                                                                 </TouchableOpacity>
                                                             )}

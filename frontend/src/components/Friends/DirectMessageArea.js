@@ -23,6 +23,7 @@ import { getAuraRingStyle, getAuraNameStyle, injectAuraAnimations } from '../../
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-hot-toast';
+import { resolveAssetUrl } from '../../config';
 
 // Inline styles for bubble relics — works even without CSS className support
 const BUBBLE_INLINE_STYLES = {
@@ -617,7 +618,7 @@ const DirectMessageArea = () => {
                     <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginInlineEnd: 12, overflow: 'hidden' }}>
                         {currentDMFriend.avatar_url ? (
                             <img
-                                src={((currentDMFriend.avatar_url)?.startsWith('http') ? (currentDMFriend.avatar_url) : `http://localhost:8000${currentDMFriend.avatar_url}`)}
+                                src={resolveAssetUrl(currentDMFriend.avatar_url)}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 alt=""
                             />
@@ -722,7 +723,7 @@ const DirectMessageArea = () => {
                         <View style={styles.emptyAvatar}>
                             {currentDMFriend.avatar_url ? (
                                 <img
-                                    src={((currentDMFriend.avatar_url)?.startsWith('http') ? (currentDMFriend.avatar_url) : `http://localhost:8000${currentDMFriend.avatar_url}`)}
+                                    src={resolveAssetUrl(currentDMFriend.avatar_url)}
                                     style={{ width: '100%', height: '100%', borderRadius: '50%' }}
                                     alt=""
                                 />
@@ -800,7 +801,7 @@ const DirectMessageArea = () => {
                                             <View style={{ width: '100%', height: '100%', borderRadius: '50%', zIndex: 2, position: 'relative' }}>
                                                 {sender?.avatar_url ? (
                                                     <img
-                                                        src={((sender.avatar_url)?.startsWith('http') ? (sender.avatar_url) : `http://localhost:8000${sender.avatar_url}`)}
+                                                        src={resolveAssetUrl(sender.avatar_url)}
                                                         style={{ width: '100%', height: '100%', borderRadius: '50%', cursor: 'pointer' }}
                                                         alt=""
                                                     />
@@ -888,13 +889,13 @@ const DirectMessageArea = () => {
                                                                 <View key={i} style={{ marginBottom: 4 }}>
                                                                     {att.type === 'voice' ? (
                                                                         <VoiceMessagePlayer
-                                                                            url={((att.url)?.startsWith('http') ? (att.url) : `http://localhost:8000${att.url}`)}
+                                                                            url={resolveAssetUrl(att.url)}
                                                                             duration={att.metadata?.duration}
                                                                         />
                                                                     ) : att.type === 'image' ? (
-                                                                        <img src={((att.url)?.startsWith('http') ? (att.url) : `http://localhost:8000${att.url}`)} style={{ maxWidth: 300, borderRadius: 8 }} alt="" />
+                                                                        <img src={resolveAssetUrl(att.url)} style={{ maxWidth: 300, borderRadius: 8 }} alt="" />
                                                                     ) : (
-                                                                        <TouchableOpacity onPress={() => window.open(((att.url)?.startsWith('http') ? (att.url) : `http://localhost:8000${att.url}`), '_blank')}>
+                                                                        <TouchableOpacity onPress={() => window.open(resolveAssetUrl(att.url), '_blank')}>
                                                                             <Text style={{ color: '#8b5cf6', fontSize: 13, textDecorationLine: 'underline' }}>
                                                                                 📎 {att.filename}
                                                                             </Text>

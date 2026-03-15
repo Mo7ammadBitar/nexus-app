@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
 import { useTranslation } from 'react-i18next';
+import { resolveAssetUrl } from '../../config';
 
 const ICE_SERVERS = [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -569,7 +570,7 @@ const DMVoiceCall = ({ currentDMFriend, onEndCall }) => {
                         <View style={[styles.avatarSmall, isMuted && styles.avatarMuted, isSpeaking && !isMuted && styles.avatarSpeaking]}>
                             {user?.avatar_url ? (
                                 <img
-                                    src={user.avatar_url.startsWith('http') ? user.avatar_url : `http://localhost:8000${user.avatar_url}`}
+                                    src={resolveAssetUrl(user.avatar_url)}
                                     style={{ width: '100%', height: '100%', borderRadius: '50%' }}
                                     alt=""
                                 />
@@ -591,7 +592,7 @@ const DMVoiceCall = ({ currentDMFriend, onEndCall }) => {
                             <View style={[styles.avatarSmall, p.isMuted && styles.avatarMuted, p.isSpeaking && !p.isMuted && styles.avatarSpeaking]}>
                                 {currentDMFriend?.avatar_url ? (
                                     <img
-                                        src={currentDMFriend.avatar_url.startsWith('http') ? currentDMFriend.avatar_url : `http://localhost:8000${currentDMFriend.avatar_url}`}
+                                        src={resolveAssetUrl(currentDMFriend.avatar_url)}
                                         style={{ width: '100%', height: '100%', borderRadius: '50%' }}
                                         alt=""
                                     />

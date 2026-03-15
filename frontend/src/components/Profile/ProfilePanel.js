@@ -13,6 +13,7 @@ import StarredMessagesPanel from './StarredMessagesPanel';
 import NexusEliteModal from './NexusEliteModal';
 import { getAuraRingStyle, getAuraNameStyle, injectAuraAnimations, getAuraAvatarContainerStyle } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
+import { resolveAssetUrl } from '../../config';
 
 // Inline styles for frame relics
 const FRAME_INLINE_STYLES = {
@@ -224,7 +225,7 @@ const ProfilePanel = ({ onClose }) => {
                     <View style={styles.bannerSection}>
                         <View style={[styles.banner, isPremium && styles.premiumBanner]}>
                             {user?.banner_url ? (
-                                <img src={((user.banner_url)?.startsWith('http') ? (user.banner_url) : `http://localhost:8000${user.banner_url}`)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                                <img src={resolveAssetUrl(user.banner_url)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
                             ) : (
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                                     {isPremium ? (
@@ -271,7 +272,7 @@ const ProfilePanel = ({ onClose }) => {
                                 }} />}
 
                                 {user?.avatar_url ? (
-                                    <img src={((user.avatar_url)?.startsWith('http') ? (user.avatar_url) : `http://localhost:8000${user.avatar_url}`)} style={{ width: '100%', height: '100%', borderRadius: '50%', position: 'relative', zIndex: 2 }} alt="" />
+                                    <img src={resolveAssetUrl(user.avatar_url)} style={{ width: '100%', height: '100%', borderRadius: '50%', position: 'relative', zIndex: 2 }} alt="" />
                                 ) : (
                                     <View style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', position: 'relative', zIndex: 2 }}>
                                         <Text style={styles.avatarText}>{user?.username?.charAt(0).toUpperCase()}</Text>

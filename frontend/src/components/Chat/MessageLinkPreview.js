@@ -4,6 +4,7 @@ import { previewAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useServerStore } from '../../store/serverStore';
 import { useTranslation } from 'react-i18next';
+import { resolveAssetUrl } from '../../config';
 
 /**
  * MessageLinkPreview - Renders a rich preview card for message links
@@ -129,7 +130,7 @@ const MessageLinkPreview = ({ linkData }) => {
                     <View style={styles.serverRow}>
                         {previewData?.server_icon_url ? (
                             <img
-                                src={((previewData.server_icon_url)?.startsWith('http') ? (previewData.server_icon_url) : `http://localhost:8000${previewData.server_icon_url}`)}
+                                src={resolveAssetUrl(previewData.server_icon_url)}
                                 style={{ width: 16, height: 16, borderRadius: 4 }}
                                 alt=""
                             />

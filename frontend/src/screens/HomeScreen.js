@@ -44,6 +44,7 @@ import DirectMessageArea from '../components/Friends/DirectMessageArea';
 import IncomingCallModal from '../components/Chat/IncomingCallModal';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { initPresence, disconnectChatSocket } from '../services/socket';
+import { resolveAssetUrl } from '../config';
 
 const HomeScreen = () => {
     const { t } = useTranslation();
@@ -219,7 +220,7 @@ const HomeScreen = () => {
 
                             {user?.avatar_url ? (
                                 <img
-                                    src={((user.avatar_url)?.startsWith('http') ? (user.avatar_url) : `http://localhost:8000${user.avatar_url}`)}
+                                    src={resolveAssetUrl(user.avatar_url)}
                                     style={{ width: '100%', height: '100%', borderRadius: '50%', position: 'relative', zIndex: 2 }}
                                     alt=""
                                 />

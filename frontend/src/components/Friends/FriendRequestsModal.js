@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { useFriendsStore } from '../../store/friendsStore';
 import { friendsAPI } from '../../services/api';
 import { useTranslation } from 'react-i18next';
+import { resolveAssetUrl } from '../../config';
 
 const FriendRequestsModal = ({ onClose }) => {
     const { t } = useTranslation();
@@ -147,7 +148,7 @@ const FriendRequestsModal = ({ onClose }) => {
                                         <div style={styles.avatar}>
                                             {request.requester?.avatar_url ? (
                                                 <img
-                                                    src={((request.requester.avatar_url)?.startsWith('http') ? (request.requester.avatar_url) : `http://localhost:8000${request.requester.avatar_url}`)}
+                                                    src={resolveAssetUrl(request.requester.avatar_url)}
                                                     style={styles.avatarImage}
                                                     alt=""
                                                 />
@@ -200,7 +201,7 @@ const FriendRequestsModal = ({ onClose }) => {
                                         <div style={styles.avatar}>
                                             {request.receiver?.avatar_url ? (
                                                 <img
-                                                    src={((request.receiver.avatar_url)?.startsWith('http') ? (request.receiver.avatar_url) : `http://localhost:8000${request.receiver.avatar_url}`)}
+                                                    src={resolveAssetUrl(request.receiver.avatar_url)}
                                                     style={styles.avatarImage}
                                                     alt=""
                                                 />

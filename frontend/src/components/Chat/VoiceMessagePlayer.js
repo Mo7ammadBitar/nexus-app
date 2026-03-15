@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native-web';
 import { Play, Pause } from 'lucide-react';
+import { resolveAssetUrl } from '../../config';
 
 const VoiceMessagePlayer = ({ url, duration }) => {
     const [isPlaying, setIsPlaying] = useState(false);
@@ -11,7 +12,7 @@ const VoiceMessagePlayer = ({ url, duration }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     // Check if the URL is absolute or requires the local API fallback
-    const audioUrl = url?.startsWith('http') ? url : `http://localhost:8000${url}`;
+    const audioUrl = url?.startsWith('http') ? url : resolveAssetUrl(url);
 
     // استخدام HTML5 Audio المباشر بدلاً من expo-av
     const audioRef = useRef(new Audio(audioUrl));
@@ -25,7 +26,7 @@ const VoiceMessagePlayer = ({ url, duration }) => {
 
     useEffect(() => {
         const audio = audioRef.current;
-        const currentAudioUrl = url?.startsWith('http') ? url : `http://localhost:8000${url}`;
+        const currentAudioUrl = url?.startsWith('http') ? url : resolveAssetUrl(url);
         audio.src = currentAudioUrl; // التأكد من الرابط
 
         // تجهيز الإيفنتات (Events)
