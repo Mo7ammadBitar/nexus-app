@@ -2,14 +2,14 @@ import React, { useMemo } from 'react';
 import { PayPalButtons } from '@paypal/react-paypal-js';
 
 /**
- * PayPalCheckoutButton — Real PayPal Sandbox checkout button.
+ * PayPalCheckoutButton — Creates a PayPal order client-side,
+ * then passes the orderID to the parent for SERVER-SIDE verification.
  *
  * Props:
- *   amount    (string)   — e.g. "4.99" or "$4.99"
- *   onSuccess (function) — called after PayPal payment is approved/captured
+ *   amount    (string)   — e.g. "4.99"
+ *   onApproved (function) — called with (orderID) after user approves in PayPal
  */
-const PayPalCheckoutButton = ({ amount, onSuccess }) => {
-    // Aggressively sanitize the amount: strip anything that isn't a digit or dot
+const PayPalCheckoutButton = ({ amount, onApproved }) => {
     const sanitizedAmount = useMemo(() => {
         if (!amount && amount !== 0) return '1.00';
         const cleaned = String(amount).replace(/[^0-9.]/g, '');
@@ -42,21 +42,15 @@ const PayPalCheckoutButton = ({ amount, onSuccess }) => {
                                 },
                             },
                         ],
+                        // Do NOT auto-capture — let our backend capture & verify
+                        intent: 'CAPTURE',
                     });
                 }}
-                onApprove={async (data, actions) => {
-                    console.log('[PayPal] Payment approved — orderID:', data.orderID);
-                    // Try to capture; if it fails (ad blocker, sandbox quirks),
-                    // still proceed — onApprove only fires after genuine user approval.
-                    try {
-                        const details = await actions.order.capture();
-                        console.log('[PayPal] Capture succeeded:', details);
-                    } catch (captureErr) {
-                        console.warn('[PayPal] Capture failed (likely ad blocker or sandbox issue):', captureErr.message);
-                        console.warn('[PayPal] Proceeding anyway — payment was approved by user.');
-                    }
-                    // Always call onSuccess — the user approved in PayPal
-                    if (onSuccess) onSuccess();
+                onApprove={async (data) => {
+                    // User approved in PayPal popup — send orderID to parent
+                    // The parent will call our backend to capture + verify
+                    console.log('[PayPal] User approved — orderID:', data.orderID);
+                    if (onApproved) onApproved(data.orderID);
                 }}
                 onError={(err) => {
                     console.error('[PayPal] Checkout Error:', err);
@@ -70,5 +64,3 @@ const PayPalCheckoutButton = ({ amount, onSuccess }) => {
 };
 
 export default PayPalCheckoutButton;
-
-

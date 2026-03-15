@@ -264,10 +264,12 @@ export const oracleAPI = {
     explain: (content) => api.post('/oracle/explain', { content }),
 };
 
-// Payments API
+// Payments API (Server-Side Verified)
 export const paymentsAPI = {
-    buyShards: (packId) => api.post('/payments/buy-shards', { pack_id: packId }),
-    subscribe: (plan) => api.post('/payments/subscribe', { plan }),
+    verifyShards: (orderId, packId) =>
+        api.post('/payments/verify-shards', { order_id: orderId, pack_id: packId }),
+    verifyElite: (orderId, plan) =>
+        api.post('/payments/verify-elite', { order_id: orderId, plan }),
 };
 
 export default api;

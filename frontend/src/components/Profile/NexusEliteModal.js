@@ -10,16 +10,15 @@ const NexusEliteModal = ({ onClose }) => {
     const { t } = useTranslation();
     const { refreshUser } = useAuthStore();
 
-    const handleSubscribe = async (plan) => {
+    const handleSubscribe = async (orderId, plan) => {
         try {
-            await paymentsAPI.subscribe(plan);
+            await paymentsAPI.verifyElite(orderId, plan);
             await refreshUser(); // Update user state to unlock features immediately
             onClose(); // Close modal on success
-            // You might want to show a success toast here via a global store or prop
-            alert(t('elite.msg_success', "Welcome to Nexus Elite! Features unlocked.")); // Simple fallback
+            alert(t('elite.msg_success', "Welcome to Nexus Elite! Features unlocked."));
         } catch (error) {
             console.error("Subscription failed:", error);
-            alert(t('elite.msg_fail', "Failed to subscribe. Please try again."));
+            alert(error.response?.data?.detail || t('elite.msg_fail', "Failed to subscribe. Please try again."));
         }
     };
 
@@ -51,7 +50,7 @@ const NexusEliteModal = ({ onClose }) => {
                         <div style={{ width: '100%', marginTop: 16 }}>
                             <PayPalCheckoutButton
                                 amount="4.99"
-                                onSuccess={() => handleSubscribe('monthly')}
+                                onApproved={(orderId) => handleSubscribe(orderId, 'monthly')}
                             />
                         </div>
                     </View>
@@ -60,12 +59,12 @@ const NexusEliteModal = ({ onClose }) => {
                     <View style={[styles.planCard, styles.bestValueCard]}>
                         <div style={styles.bestValueBadge}>{t('elite.badge_best_value', 'BEST VALUE')}</div>
                         <Text style={styles.planName}>{t('elite.plan_yearly', 'Yearly')}</Text>
-                        <Text style={styles.planPrice}>$49.99<Text style={styles.period}>{t('elite.period_yr', '/yr')}</Text></Text>
+                        <Text style={styles.planPrice}>$39.99<Text style={styles.period}>{t('elite.period_yr', '/yr')}</Text></Text>
                         <Text style={styles.savings}>{t('elite.savings_17', 'Save 17%')}</Text>
                         <div style={{ width: '100%', marginTop: 16 }}>
                             <PayPalCheckoutButton
-                                amount="49.99"
-                                onSuccess={() => handleSubscribe('yearly')}
+                                amount="39.99"
+                                onApproved={(orderId) => handleSubscribe(orderId, 'yearly')}
                             />
                         </div>
                     </View>

@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     cloudinary_api_key: str = ""
     cloudinary_api_secret: str = ""
     
+    # PayPal Config
+    paypal_client_id: str = ""
+    paypal_client_secret: str = ""
+    paypal_sandbox: bool = True  # Set to False for live payments
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

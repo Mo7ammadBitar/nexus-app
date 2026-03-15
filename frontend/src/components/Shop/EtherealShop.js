@@ -141,9 +141,9 @@ const EtherealShop = ({ isOpen, onClose }) => {
         }
     };
 
-    const handleBuyShards = async (packId) => {
+    const handleBuyShards = async (orderId, packId) => {
         try {
-            const response = await paymentsAPI.buyShards(packId);
+            const response = await paymentsAPI.verifyShards(orderId, packId);
             showNotification(
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Gem size={16} color="#fbbf24" />
@@ -156,7 +156,7 @@ const EtherealShop = ({ isOpen, onClose }) => {
             showNotification(
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <XCircle size={16} color="#ef4444" />
-                    <span>{t('shop.err_purchase', 'Failed to purchase shards')}</span>
+                    <span>{error.response?.data?.detail || t('shop.err_purchase', 'Failed to purchase shards')}</span>
                 </div>
             );
         }
@@ -373,7 +373,7 @@ const EtherealShop = ({ isOpen, onClose }) => {
                                         <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                                             <PayPalCheckoutButton
                                                 amount={pack.price}
-                                                onSuccess={() => handleBuyShards(pack.id)}
+                                                onApproved={(orderId) => handleBuyShards(orderId, pack.id)}
                                             />
                                         </div>
                                     </div>
