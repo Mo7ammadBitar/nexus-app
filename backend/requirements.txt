@@ -19,6 +19,9 @@ bcrypt==4.1.2
 # Real-Time (Socket.IO)
 python-socketio==5.11.0
 
+# File I/O
+aiofiles==23.2.1
+
 # File Uploads (Cloudinary)
 cloudinary==1.38.0
 
