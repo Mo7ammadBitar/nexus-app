@@ -116,9 +116,13 @@ function App() {
         }
     }, [isAuthenticated, user, setupSocketListeners]);
 
+    // Debug: verify PayPal Client ID is injected at build time
+    const paypalClientId = process.env.REACT_APP_PAYPAL_CLIENT_ID;
+    console.log('PayPal Client ID:', paypalClientId ? `${paypalClientId.substring(0, 8)}...` : '❌ MISSING');
+
     return (
         <PayPalScriptProvider options={{
-            'client-id': process.env.REACT_APP_PAYPAL_CLIENT_ID,
+            'client-id': paypalClientId || 'sb',
             currency: 'USD',
             intent: 'capture',
         }}>
