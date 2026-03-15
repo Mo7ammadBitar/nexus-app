@@ -1,1 +1,45 @@
-- r backend/requirements.txt
+# Nexus Backend Dependencies
+
+# Core Framework
+fastapi==0.109.0
+uvicorn==0.27.0
+pydantic[email]==2.5.3
+pydantic-settings==2.1.0
+python-multipart==0.0.6
+
+# Database (MongoDB)
+motor==3.3.2
+pymongo==4.6.1
+
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
+
+# Real-Time (Socket.IO)
+python-socketio==5.11.0
+
+# File I/O
+aiofiles==23.2.1
+
+# File Uploads (Cloudinary)
+cloudinary==1.38.0
+
+# Media Processing
+Pillow==10.2.0
+
+# AI (The Oracle - Google Gemini)
+google-generativeai==0.8.5
+
+# HTTP Client (for PayPal server-side verification)
+httpx==0.27.0
+
+# Production Server
+gunicorn==21.2.0
+
+# Environment
+python-dotenv==1.0.0
+
+# ASGI Server
+websockets==12.0
+
