@@ -3,16 +3,21 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
 const dotenv = require('dotenv');
 
-// Load .env file
-const env = dotenv.config().parsed || {};
+// Load .env file if it exists (local dev), then merge with system env (Vercel/CI)
+const fileEnv = dotenv.config().parsed || {};
+
+// Merge: system/Vercel env vars override .env file vars
+const mergedEnv = { ...fileEnv, ...process.env };
 
 // Build DefinePlugin replacements for REACT_APP_* vars
-const envKeys = Object.keys(env).reduce((prev, next) => {
+const envKeys = Object.keys(mergedEnv).reduce((prev, next) => {
   if (next.startsWith('REACT_APP_')) {
-    prev[`process.env.${next}`] = JSON.stringify(env[next]);
+    prev[`process.env.${next}`] = JSON.stringify(mergedEnv[next]);
   }
   return prev;
-}, {});
+}, {
+  'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+});
 
 module.exports = {
   entry: './src/index.js',
