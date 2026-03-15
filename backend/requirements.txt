@@ -28,5 +28,8 @@ cloudinary==1.40.0
 # AI (The Oracle - Google Gemini)
 google-generativeai==0.8.5
 
+# Production Server
+gunicorn==21.2.0
+
 # Environment
 python-dotenv==1.0.0
