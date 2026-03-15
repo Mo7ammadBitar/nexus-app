@@ -1,18 +1,22 @@
 /**
  * Centralized environment configuration for API and WebSocket URLs.
- * Switches between dev (localhost) and production (Azure) based on NODE_ENV.
+ * 
+ * Priority:
+ *   1. REACT_APP_BACKEND_URL env variable (if set in .env or .env.local)
+ *   2. Auto-detect based on NODE_ENV (production vs development)
  */
+
+const PROD_URL = 'https://nexus-backend-api-1-e8dabjgja2gqfdh2.spaincentral-01.azurewebsites.net';
+const DEV_URL = 'http://localhost:8000';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// --- Base URLs ---
-export const API_BASE_URL = isDev
-    ? 'http://localhost:8000'
-    : 'https://nexus-backend-api-1-e8dabjgja2gqfdh2.spaincentral-01.azurewebsites.net';
+// Allow manual override via .env / .env.local
+const BASE = process.env.REACT_APP_BACKEND_URL || (isDev ? DEV_URL : PROD_URL);
 
-export const SOCKET_BASE_URL = isDev
-    ? 'http://localhost:8000'
-    : 'https://nexus-backend-api-1-e8dabjgja2gqfdh2.spaincentral-01.azurewebsites.net';
+// --- Base URLs ---
+export const API_BASE_URL = BASE;
+export const SOCKET_BASE_URL = BASE;
 
 /**
  * Resolves a relative asset path (e.g., /static/2.jpg, /uploads/avatar.png)
