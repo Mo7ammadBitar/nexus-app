@@ -321,9 +321,11 @@ export const useFriendsStore = create((set, get) => ({
     },
 
     // Setup socket listeners for DMs
+    // Setup socket listeners for DMs and Friend Requests
     setupSocketListeners: (socket) => {
         if (!socket) return;
 
+        // 1. LISTENER FOR DIRECT MESSAGES
         socket.off('dm_new_message'); // Remove existing to avoid duplicates
         socket.on('dm_new_message', (newMessage) => {
             console.log("📩 Received DM via Socket:", newMessage);
@@ -373,6 +375,22 @@ export const useFriendsStore = create((set, get) => ({
                 );
                 updateBadgeCount(newTotal);
             }
+        });
+
+        // 2. LISTENER FOR NEW FRIEND REQUESTS (NEW!)
+        socket.off('friend_request_received'); // Remove existing to avoid duplicates
+        socket.on('friend_request_received', (data) => {
+            console.log("🤝 Real-time Friend Request Received:", data);
+
+            // Fetch the new pending request from API to update the list and trigger badge
+            get().fetchPendingRequests();
+
+            // Show a toast/system notification for the new friend request
+            showNativeNotification(
+                "New Friend Request",
+                "Someone wants to connect with you on Nexus!",
+                { skipFocusCheck: true }
+            );
         });
     },
 

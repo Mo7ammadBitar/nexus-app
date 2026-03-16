@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     avatarContainer: { position: 'relative', marginInlineEnd: 10 },
     avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
     accentAvatar: { borderWidth: 2 },
-    avatarText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+    avatarText: { color: '#fff', fontSize: 14, fontWeight: '600', lineHeight: 16, textAlign: 'center' },
     statusDot: { position: 'absolute', bottom: -2, insetInlineEnd: -2, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: '#16213e' },
     statusOnline: { backgroundColor: '#22c55e' },
     statusDnd: { backgroundColor: '#ef4444' },
