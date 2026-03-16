@@ -3,7 +3,7 @@ Friends Routes - Friend Requests and Management
 """
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
-
+from app.socket_instance import sio
 from app.middleware.auth import get_current_user
 from app.services.friend_service import FriendService
 from app.services.auth_service import AuthService
@@ -37,6 +37,9 @@ async def send_friend_request(
             current_user["_id"],
             target_user["_id"]
         )
+        room = f"user_{target_user['id']}"
+        await sio.emit("friend_request_received", {"request_id": request["_id"]}, room=room, namespace="/chat")
+        
         return {
             "message": "Friend request sent",
             "request_id": request["_id"]

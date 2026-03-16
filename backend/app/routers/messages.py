@@ -212,9 +212,14 @@ async def send_message(
     )
     
     # Add user info
+    # Add user info
     message["username"] = current_user["username"]
     message["display_name"] = current_user.get("display_name")
     message["avatar_url"] = current_user.get("avatar_url")
+    
+    # >>> ADD THESE LINES: Broadcast the new message to the channel room <<<
+    room = f"channel_{channel_id}"
+    await sio.emit("new_message", message, room=room, namespace="/chat")
     
     return {"message": "Message sent", "data": message}
 

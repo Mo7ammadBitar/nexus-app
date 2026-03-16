@@ -171,13 +171,15 @@ class FriendService:
             requester = await users.find_one({"_id": ObjectId(request["requester_id"])})
             if requester:
                 request["_id"] = str(request["_id"])
-                request["requester_username"] = requester["username"]
-                request["requester_display_name"] = requester.get("display_name")
-                request["requester_display_name"] = requester.get("display_name")
-                request["requester_avatar_url"] = requester.get("avatar_url")
-                # Premium fields
-                request["requester_is_premium"] = requester.get("is_premium", False)
-                request["requester_accent_color"] = requester.get("accent_color")
+                # Nesting the requester details for the frontend
+                request["requester"] = {
+                    "id": str(requester["_id"]),
+                    "username": requester["username"],
+                    "display_name": requester.get("display_name"),
+                    "avatar_url": requester.get("avatar_url"),
+                    "is_premium": requester.get("is_premium", False),
+                    "accent_color": requester.get("accent_color")
+                }
                 result.append(request)
         
         return result
@@ -198,12 +200,15 @@ class FriendService:
             receiver = await users.find_one({"_id": ObjectId(request["receiver_id"])})
             if receiver:
                 request["_id"] = str(request["_id"])
-                request["receiver_username"] = receiver["username"]
-                request["receiver_display_name"] = receiver.get("display_name")
-                request["receiver_avatar_url"] = receiver.get("avatar_url")
-                # Premium fields
-                request["receiver_is_premium"] = receiver.get("is_premium", False)
-                request["receiver_accent_color"] = receiver.get("accent_color")
+                # Nesting the receiver details for the frontend
+                request["receiver"] = {
+                    "id": str(receiver["_id"]),
+                    "username": receiver["username"],
+                    "display_name": receiver.get("display_name"),
+                    "avatar_url": receiver.get("avatar_url"),
+                    "is_premium": receiver.get("is_premium", False),
+                    "accent_color": receiver.get("accent_color")
+                }
                 result.append(request)
         
         return result

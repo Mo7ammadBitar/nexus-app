@@ -25,13 +25,9 @@ class FriendRequestResponse(BaseModel):
     status: FriendStatus
     created_at: datetime
     
-    # Populated user info
-    requester_username: Optional[str] = None
-    requester_display_name: Optional[str] = None
-    requester_avatar_url: Optional[str] = None
-    receiver_username: Optional[str] = None
-    receiver_display_name: Optional[str] = None
-    receiver_avatar_url: Optional[str] = None
+    # Populated user info (Nested dictionary for frontend)
+    requester: Optional[dict] = None
+    receiver: Optional[dict] = None
     
     class Config:
         populate_by_name = True
