@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         backgroundColor: 'var(--bg-primary)',
-        height: '100vh',
+        height: '100dvh',
     },
     channelSidebar: {
         width: 240,

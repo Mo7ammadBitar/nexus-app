@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        minHeight: '100vh',
+        minHeight: '100dvh',
         padding: 20,
     },
     container: {
