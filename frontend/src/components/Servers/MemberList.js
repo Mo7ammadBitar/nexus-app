@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     groupTitle: { color: '#6b7280', fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginBottom: 8 },
     memberItem: { flexDirection: 'row', alignItems: 'center', padding: 8, borderRadius: 6, cursor: 'pointer', marginBottom: 2 },
     avatarContainer: { position: 'relative', marginInlineEnd: 10 },
-    avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+    avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'transparent', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
     accentAvatar: { borderWidth: 2 },
     avatarText: { color: '#fff', fontSize: 14, fontWeight: '600', lineHeight: 16, textAlign: 'center' },
     statusDot: { position: 'absolute', bottom: -2, insetInlineEnd: -2, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: '#16213e' },

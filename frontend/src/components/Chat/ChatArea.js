@@ -252,16 +252,28 @@ const ChatArea = () => {
     useEffect(() => {
         if (!currentChannel) return;
 
-        // Connect socket with handlers
-        const socket = connectChatSocket(
-            // onMessage handler - add new messages to store
-            (message) => {
+        // Connect socket (get existing instance)
+        const socket = connectChatSocket();
+
+        // Direct listeners instead of relying on custom callback bindings
+        if (socket) {
+            // Join the channel room
+            joinChannel(currentChannel._id).catch(err => {
+                console.error('Failed to join channel:', err);
+            });
+
+            // Message Listener
+            socket.off('new_message');
+            socket.on('new_message', (message) => {
+                console.log("📩 Received Server Message via Socket:", message);
                 if (message.channel_id === currentChannel._id) {
                     addMessage(message);
                 }
-            },
-            // onTyping handler
-            (data) => {
+            });
+
+            // Typing Listeners
+            socket.off('user_typing');
+            socket.on('user_typing', (data) => {
                 if (data.channel_id === currentChannel._id && data.user_id !== user?._id) {
                     setTypingUsers(prev => {
                         if (!prev.find(u => u.user_id === data.user_id)) {
@@ -270,19 +282,13 @@ const ChatArea = () => {
                         return prev;
                     });
                 }
-            },
-            // onStopTyping handler
-            (data) => {
+            });
+
+            socket.off('user_stopped_typing');
+            socket.on('user_stopped_typing', (data) => {
                 if (data.channel_id === currentChannel._id) {
                     setTypingUsers(prev => prev.filter(u => u.user_id !== data.user_id));
                 }
-            }
-        );
-
-        // Join the channel room
-        if (socket) {
-            joinChannel(currentChannel._id).catch(err => {
-                console.error('Failed to join channel:', err);
             });
         }
 
@@ -290,6 +296,11 @@ const ChatArea = () => {
             // Leave channel on cleanup
             if (currentChannel) {
                 leaveChannel(currentChannel._id);
+            }
+            if (socket) {
+                socket.off('new_message');
+                socket.off('user_typing');
+                socket.off('user_stopped_typing');
             }
             setTypingUsers([]);
         };
@@ -1399,6 +1410,7 @@ const styles = StyleSheet.create({
         height: 40,
         borderRadius: 20,
         backgroundImage: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+        display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         marginInlineEnd: 12,

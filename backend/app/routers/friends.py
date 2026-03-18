@@ -37,7 +37,7 @@ async def send_friend_request(
             current_user["_id"],
             target_user["_id"]
         )
-        room = f"user_{target_user['id']}"
+        room = str(target_user['_id'])
         await sio.emit("friend_request_received", {"request_id": request["_id"]}, room=room, namespace="/chat")
         
         return {

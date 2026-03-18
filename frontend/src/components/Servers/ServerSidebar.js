@@ -346,6 +346,7 @@ const styles = StyleSheet.create({
         height: 48,
         borderRadius: 24,
         backgroundColor: 'var(--bg-secondary)',
+        display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 8,
