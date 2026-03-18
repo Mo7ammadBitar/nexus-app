@@ -113,6 +113,8 @@ const DirectMessageArea = () => {
 
     // Typing indicator
     const typingTimeoutRef = useRef(null);
+    const inputRef = useRef(null); // Added for mobile focus
+
     const friendId = currentDMFriend?.id || currentDMFriend?._id;
     const typingInfo = useTypingStore(state => state.dmTyping[friendId]);
 
@@ -1184,6 +1186,7 @@ const DirectMessageArea = () => {
                             multiple
                         />
                         <TextInput
+                            ref={inputRef}
                             style={styles.input}
                             placeholder={replyingTo ? `${t('dm.placeholder_reply', 'Reply to')} ${replyingTo.sender_username}...` : `${t('dm.placeholder_message', 'Message')} @${currentDMFriend.username}`}
                             placeholderTextColor="#6b7280"
@@ -1285,7 +1288,7 @@ const DirectMessageArea = () => {
                                 <Star size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
                                 <Text style={styles.mobileActionText}>Star Message</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { handleReply(mobileActionMsg); setMobileActionMsg(null); }}>
+                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { handleReply(mobileActionMsg); setMobileActionMsg(null); inputRef.current?.focus(); }}>
                                 <Reply size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
                                 <Text style={styles.mobileActionText}>Reply</Text>
                             </TouchableOpacity>

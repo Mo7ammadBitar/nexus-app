@@ -142,6 +142,8 @@ const ChatArea = () => {
     // Pinned messages state
     const [showPinnedPanel, setShowPinnedPanel] = useState(false);
 
+    const inputRef = useRef(null); // Added for mobile focus
+
     // Check if current user is muted
     const myMemberData = members.find(m => m.user_id === user?._id);
     const isMuted = myMemberData?.is_muted;
