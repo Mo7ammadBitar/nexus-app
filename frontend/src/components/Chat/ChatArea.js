@@ -13,6 +13,7 @@ import VoiceMessagePlayer from './VoiceMessagePlayer';
 import PinnedMessagesPanel from './PinnedMessagesPanel';
 import VoiceChannel from './VoiceChannel';
 import MemberProfile from '../Profile/MemberProfile';
+import IncomingCallModal from './IncomingCallModal';
 import { generateMessageLink, copyToClipboard } from '../../utils/messageLinkUtils';
 import { Smile, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Pin, Bell, Users, Hash, Sparkles, Eye, X, ArrowLeft } from 'lucide-react';
 import {
