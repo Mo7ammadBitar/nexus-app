@@ -147,7 +147,22 @@ const ServerSidebar = ({ onOpenFriends }) => {
             {/* Modal - using React Portal for proper overlay */}
             {showModal && ReactDOM.createPortal(
                 <div style={modalStyles.overlay}>
-                    <div style={modalStyles.modal}>
+                    <style>{`
+                        @media (max-width: 768px) {
+                            .mobile-server-modal {
+                                width: 100vw !important;
+                                max-width: 100vw !important;
+                                height: 100dvh !important;
+                                max-height: 100dvh !important;
+                                border-radius: 0 !important;
+                                padding-top: 40px !important;
+                                justify-content: flex-start !important;
+                                display: flex !important;
+                                flex-direction: column !important;
+                            }
+                        }
+                    `}</style>
+                    <div style={modalStyles.modal} className="mobile-server-modal">
                         <h2 style={modalStyles.title}>
                             {showModal === 'add' ? t('server_sidebar.modal_add_title', 'Add a Realm') :
                                 showModal === 'create' ? t('server_sidebar.modal_create_title', 'Forge a Realm') : t('server_sidebar.modal_join_title', 'Enter a Realm')}
@@ -391,6 +406,14 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 20,
         fontWeight: '600',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%',
+        width: '100%',
+        lineHeight: 'normal',
+        textAlign: 'center',
+        margin: 0,
     },
     activeIndicator: {
         position: 'absolute',

@@ -94,6 +94,7 @@ const DirectMessageArea = () => {
     const [hoveredMessageId, setHoveredMessageId] = useState(null);
     const [editingMessageId, setEditingMessageId] = useState(null);
     const [editContent, setEditContent] = useState('');
+    const [mobileActionMsg, setMobileActionMsg] = useState(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(null);
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [highlightedMessageId, setHighlightedMessageId] = useState(null);
@@ -619,7 +620,17 @@ const DirectMessageArea = () => {
                     style={{ flexDirection: 'row', alignItems: 'center', flex: 1, cursor: 'pointer' }}
                     onPress={() => setSelectedUserProfile({ userId: currentDMFriend.id || currentDMFriend._id })}
                 >
-                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginInlineEnd: 12, overflow: 'hidden' }}>
+                    <View style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: 'rgba(124, 58, 237, 0.2)',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginInlineEnd: 12,
+                        overflow: 'hidden'
+                    }}>
                         {currentDMFriend.avatar_url ? (
                             <img
                                 src={resolveAssetUrl(currentDMFriend.avatar_url)}
@@ -627,7 +638,18 @@ const DirectMessageArea = () => {
                                 alt=""
                             />
                         ) : (
-                            <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>
+                            <Text style={{
+                                color: '#fff',
+                                fontSize: 16,
+                                fontWeight: 'bold',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                height: '100%',
+                                width: '100%',
+                                lineHeight: 'normal',
+                                margin: 0
+                            }}>
                                 {currentDMFriend.username?.charAt(0).toUpperCase()}
                             </Text>
                         )}
@@ -778,12 +800,18 @@ const DirectMessageArea = () => {
                                         ref={(el) => { if (el) messageRefs.current[msg._id] = el; }}
                                         style={[
                                             styles.messageItem,
-                                            isHovered && styles.messageItemHovered,
+                                            !isMobile && isHovered && styles.messageItemHovered,
                                             highlightedMessageId === msg._id && styles.messageItemHighlight,
                                             isOracleMessage && { marginBottom: 24, paddingInlineStart: 10 }
                                         ]}
-                                        onMouseEnter={() => setHoveredMessageId(msg._id)}
-                                        onMouseLeave={() => setHoveredMessageId(null)}
+                                        onMouseEnter={!isMobile ? () => setHoveredMessageId(msg._id) : undefined}
+                                        onMouseLeave={!isMobile ? () => setHoveredMessageId(null) : undefined}
+                                        onContextMenu={(e) => {
+                                            if (isMobile) {
+                                                e.preventDefault();
+                                                setMobileActionMsg(msg);
+                                            }
+                                        }}
                                     >
                                         <TouchableOpacity
                                             style={[styles.messageAvatar, { overflow: 'visible' }]}
@@ -936,7 +964,7 @@ const DirectMessageArea = () => {
 
                                         {/* Action Buttons */}
                                         {
-                                            isHovered && !isEditing && (
+                                            !isMobile && isHovered && !isEditing && (
                                                 <View style={styles.messageActions}>
                                                     <TouchableOpacity
                                                         style={styles.actionIconBtn}
@@ -1237,6 +1265,56 @@ const DirectMessageArea = () => {
                     </Text>
                 </div>
             )}
+
+            {/* Mobile Actions Modal */}
+            {isMobile && mobileActionMsg && (
+                <View style={styles.mobileActionsOverlay} onClick={() => setMobileActionMsg(null)}>
+                    <View style={styles.mobileActionsSheet} onClick={e => e.stopPropagation()}>
+                        <View style={styles.mobileActionsHeader}>
+                            <Text style={styles.mobileActionsTitle}>Message Actions</Text>
+                            <TouchableOpacity onPress={() => setMobileActionMsg(null)}>
+                                <X size={20} color="#b4b4b4" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={styles.mobileActionsScroll}>
+                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { setShowEmojiPicker(mobileActionMsg._id); setMobileActionMsg(null); }}>
+                                <Smile size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                <Text style={styles.mobileActionText}>Add Reaction</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { handleStarMessage(mobileActionMsg._id); setMobileActionMsg(null); }}>
+                                <Star size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                <Text style={styles.mobileActionText}>Star Message</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { handleReply(mobileActionMsg); setMobileActionMsg(null); }}>
+                                <Reply size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                <Text style={styles.mobileActionText}>Reply</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { handleCopyLink(mobileActionMsg); setMobileActionMsg(null); }}>
+                                <Link size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                <Text style={styles.mobileActionText}>Copy Link</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { handleForward(mobileActionMsg); setMobileActionMsg(null); }}>
+                                <Share size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                <Text style={styles.mobileActionText}>Forward</Text>
+                            </TouchableOpacity>
+                            
+                            {(user?._id === mobileActionMsg.sender_id) && (
+                                <TouchableOpacity style={styles.mobileActionRow} onPress={() => { handleStartEdit(mobileActionMsg); setMobileActionMsg(null); }}>
+                                    <Edit2 size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                    <Text style={styles.mobileActionText}>Edit Message</Text>
+                                </TouchableOpacity>
+                            )}
+                            {(user?._id === mobileActionMsg.sender_id) && (
+                                <TouchableOpacity style={[styles.mobileActionRow, {borderBottomWidth: 0}]} onPress={() => { handleDelete(mobileActionMsg._id); setMobileActionMsg(null); }}>
+                                    <Trash2 size={20} color="#ed4245" style={{marginInlineEnd: 12}} />
+                                    <Text style={[styles.mobileActionText, {color: '#ed4245'}]}>Delete Message</Text>
+                                </TouchableOpacity>
+                            )}
+                        </ScrollView>
+                    </View>
+                </View>
+            )}
+
         </View >
     );
 };
@@ -1310,6 +1388,14 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 32,
         fontWeight: '700',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%',
+        width: '100%',
+        lineHeight: 'normal',
+        textAlign: 'center',
+        margin: 0,
     },
     emptyTitle: {
         color: '#fff',
@@ -1356,6 +1442,48 @@ const styles = StyleSheet.create({
     messageItemHovered: {
         backgroundColor: 'rgba(255, 255, 255, 0.04)',
     },
+    mobileActionsOverlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'flex-end',
+        zIndex: 9999,
+    },
+    mobileActionsSheet: {
+        backgroundColor: '#2b2d31',
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        paddingBottom: 24,
+        maxHeight: '80%',
+    },
+    mobileActionsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.05)',
+    },
+    mobileActionsTitle: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    mobileActionsScroll: {
+        padding: 16,
+    },
+    mobileActionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.02)',
+    },
+    mobileActionText: {
+        color: '#dbdee1',
+        fontSize: 16,
+        fontWeight: '500',
+    },
     messageItemHighlight: {
         backgroundColor: 'rgba(124, 58, 237, 0.2)',
         borderColor: '#7c3aed',
@@ -1366,6 +1494,7 @@ const styles = StyleSheet.create({
         height: 40,
         borderRadius: 20,
         backgroundImage: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+        display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         marginInlineEnd: 16,
@@ -1376,6 +1505,14 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: '600',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%',
+        width: '100%',
+        lineHeight: 'normal',
+        textAlign: 'center',
+        margin: 0,
     },
     messageContent: {
         flex: 1,

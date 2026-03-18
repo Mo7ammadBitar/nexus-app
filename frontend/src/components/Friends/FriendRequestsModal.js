@@ -69,9 +69,26 @@ const FriendRequestsModal = ({ onClose }) => {
 
     return ReactDOM.createPortal(
         <div style={styles.overlay} onClick={onClose}>
-            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <style>{`
+                @media (max-width: 768px) {
+                    .mobile-friend-modal {
+                        width: 100vw !important;
+                        max-width: 100vw !important;
+                        height: 100dvh !important;
+                        max-height: 100dvh !important;
+                        border-radius: 0 !important;
+                    }
+                    .mobile-friend-header {
+                        padding: 16px !important;
+                    }
+                    .mobile-friend-content {
+                        padding: 16px 8px !important;
+                    }
+                }
+            `}</style>
+            <div style={styles.modal} className="mobile-friend-modal" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div style={styles.header}>
+                <div style={styles.header} className="mobile-friend-header">
                     <h2 style={styles.title}>{t('friends.modal_title', 'Friends')}</h2>
                     <button style={styles.closeBtn} onClick={onClose}>✕</button>
                 </div>
@@ -134,7 +151,7 @@ const FriendRequestsModal = ({ onClose }) => {
                 </div>
 
                 {/* Content */}
-                <div style={styles.content}>
+                <div style={styles.content} className="mobile-friend-content">
                     {activeTab === 'pending' && (
                         pendingRequests.length === 0 ? (
                             <div style={styles.emptyState}>
@@ -433,6 +450,7 @@ const styles = {
         height: '100%',
         width: '100%',
         lineHeight: 'normal',
+        textAlign: 'center',
         margin: 0,
     },
     requestDetails: {

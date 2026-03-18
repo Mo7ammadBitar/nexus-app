@@ -100,8 +100,9 @@ const ChatArea = () => {
     // Edit/delete state
     const [hoveredMessageId, setHoveredMessageId] = useState(null);
     const [editingMessageId, setEditingMessageId] = useState(null);
-    const [editContent, setEditContent] = useState('');
+    const [editingContent, setEditingContent] = useState(''); // Renamed
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+    const [mobileActionMsg, setMobileActionMsg] = useState(null); // Added
 
     // Reaction picker state
     const [showEmojiPicker, setShowEmojiPicker] = useState(null);
@@ -410,23 +411,23 @@ const ChatArea = () => {
     // Edit message handlers
     const handleStartEdit = (msg) => {
         setEditingMessageId(msg._id);
-        setEditContent(msg.content);
+        setEditingContent(msg.content); // Changed from setEditContent
         setDeleteConfirmId(null);
     };
 
     const handleCancelEdit = () => {
         setEditingMessageId(null);
-        setEditContent('');
+        setEditingContent(''); // Changed from setEditContent
     };
 
     const handleSaveEdit = async (messageId) => {
-        if (!editContent.trim() || !currentChannel) return;
+        if (!editingContent.trim() || !currentChannel) return; // Changed from editContent
 
         try {
-            const response = await messagesAPI.editMessage(currentChannel._id, messageId, editContent.trim());
+            const response = await messagesAPI.editMessage(currentChannel._id, messageId, editingContent.trim()); // Changed from editContent
             updateMessage(messageId, response.data.data);
             setEditingMessageId(null);
-            setEditContent('');
+            setEditingContent(''); // Changed from setEditContent
         } catch (error) {
             console.error('Failed to edit message:', error);
         }
@@ -801,17 +802,23 @@ const ChatArea = () => {
                         const roleBadge = ROLE_BADGES[role] || null;
 
                         return (
-                            <View
-                                key={msg._id || index}
-                                ref={(el) => { if (el) messageRefs.current[msg._id] = el; }}
-                                style={[
-                                    styles.messageItem,
-                                    isHovered && styles.messageItemHovered,
-                                    highlightedMessageId === msg._id && styles.messageItemHighlight
-                                ]}
-                                onMouseEnter={() => setHoveredMessageId(msg._id)}
-                                onMouseLeave={() => setHoveredMessageId(null)}
-                            >
+                                <View
+                                    key={msg._id || index}
+                                    ref={(el) => { if (el) messageRefs.current[msg._id] = el; }}
+                                    style={[
+                                        styles.messageItem,
+                                        !isMobile && isHovered && styles.messageItemHovered, // Conditional hover for desktop
+                                        highlightedMessageId === msg._id && styles.messageItemHighlight
+                                    ]}
+                                    onMouseEnter={!isMobile ? () => setHoveredMessageId(msg._id) : undefined} // Conditional hover for desktop
+                                    onMouseLeave={!isMobile ? () => setHoveredMessageId(null) : undefined} // Conditional hover for desktop
+                                    onContextMenu={(e) => {
+                                        if (isMobile) {
+                                            e.preventDefault();
+                                            setMobileActionMsg(msg);
+                                        }
+                                    }}
+                                >
                                 <TouchableOpacity
                                     style={[styles.messageAvatar, { overflow: 'visible' }]}
                                     onPress={() => setSelectedUserProfile({ userId: msg.user_id, username: msg.username })}
@@ -875,8 +882,8 @@ const ChatArea = () => {
                                         <View style={styles.editContainer}>
                                             <TextInput
                                                 style={styles.editInput}
-                                                value={editContent}
-                                                onChangeText={setEditContent}
+                                                value={editingContent} // Changed from editContent
+                                                onChangeText={setEditingContent} // Changed from setEditContent
                                                 onKeyPress={(e) => handleEditKeyPress(e, msg._id)}
                                                 multiline
                                                 autoFocus
@@ -986,7 +993,7 @@ const ChatArea = () => {
 
                                 {/* Action buttons - show on hover */}
                                 {
-                                    isHovered && !isEditing && !isDeleting && (
+                                    !isMobile && isHovered && !isEditing && !isDeleting && (
                                         <View style={styles.messageActions}>
                                             <TouchableOpacity
                                                 style={styles.actionIconBtn}
@@ -1238,6 +1245,7 @@ const ChatArea = () => {
                                     multiple
                                 />
                                 <TextInput
+                                    ref={inputRef} // Added ref
                                     style={styles.input}
                                     placeholder={replyingTo ? t('chat.reply_placeholder', 'Reply to {{user}}...', { user: replyingTo.username }) : t('chat.message_placeholder', 'Message #{{name}}', { name: currentChannel.name })}
                                     placeholderTextColor="#6b7280"
@@ -1265,6 +1273,56 @@ const ChatArea = () => {
                     </>
                 )
             }
+
+            {/* Global Incoming DM Call Modal */}
+            <IncomingCallModal />
+
+            {/* Mobile Actions Modal */}
+            {isMobile && mobileActionMsg && (
+                <View style={styles.mobileActionsOverlay} onClick={() => setMobileActionMsg(null)}>
+                    <View style={styles.mobileActionsSheet} onClick={e => e.stopPropagation()}>
+                        <View style={styles.mobileActionsHeader}>
+                            <Text style={styles.mobileActionsTitle}>Message Actions</Text>
+                            <TouchableOpacity onPress={() => setMobileActionMsg(null)}>
+                                <X size={20} color="#b4b4b4" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={styles.mobileActionsScroll}>
+                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { setShowEmojiPicker(mobileActionMsg._id); setMobileActionMsg(null); }}>
+                                <Smile size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                <Text style={styles.mobileActionText}>Add Reaction</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { handleStarMessage(mobileActionMsg._id); setMobileActionMsg(null); }}>
+                                <Star size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                <Text style={styles.mobileActionText}>Star Message</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { handleReply(mobileActionMsg); setMobileActionMsg(null); inputRef.current?.focus(); }}>
+                                <Reply size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                <Text style={styles.mobileActionText}>Reply</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { copyToClipboard(generateMessageLink(currentServer?._id, currentChannel?._id, mobileActionMsg._id)); toast.success(t('chat.link_copied')); setMobileActionMsg(null); }}>
+                                <Link size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                <Text style={styles.mobileActionText}>Copy Link</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.mobileActionRow} onPress={() => { handleForward(mobileActionMsg); setMobileActionMsg(null); }}>
+                                <Share size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                <Text style={styles.mobileActionText}>Forward</Text>
+                            </TouchableOpacity>
+                            
+                            {(user?._id === mobileActionMsg.user_id) && (
+                                <TouchableOpacity style={styles.mobileActionRow} onPress={() => { handleStartEdit(mobileActionMsg); setMobileActionMsg(null); }}>
+                                    <Edit2 size={20} color="#b4b4b4" style={{marginInlineEnd: 12}} />
+                                    <Text style={styles.mobileActionText}>Edit Message</Text>
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity style={[styles.mobileActionRow, {borderBottomWidth: 0}]} onPress={() => { setDeleteConfirmId(mobileActionMsg._id); setMobileActionMsg(null); }}>
+                                <Trash2 size={20} color="#ed4245" style={{marginInlineEnd: 12}} />
+                                <Text style={[styles.mobileActionText, {color: '#ed4245'}]}>Delete Message</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                </View>
+            )}
 
             {/* Forward Modal */}
             <ForwardModal
@@ -1414,6 +1472,48 @@ const styles = StyleSheet.create({
     messageItemHovered: {
         backgroundColor: 'rgba(255, 255, 255, 0.04)',
     },
+    mobileActionsOverlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'flex-end',
+        zIndex: 9999,
+    },
+    mobileActionsSheet: {
+        backgroundColor: '#2b2d31',
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        paddingBottom: 24,
+        maxHeight: '80%',
+    },
+    mobileActionsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.05)',
+    },
+    mobileActionsTitle: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    mobileActionsScroll: {
+        padding: 16,
+    },
+    mobileActionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.02)',
+    },
+    mobileActionText: {
+        color: '#dbdee1',
+        fontSize: 16,
+        fontWeight: '500',
+    },
     messageAvatar: {
         width: 40,
         height: 40,
@@ -1435,6 +1535,7 @@ const styles = StyleSheet.create({
         height: '100%',
         width: '100%',
         lineHeight: 'normal',
+        textAlign: 'center',
         margin: 0,
     },
     messageContent: {

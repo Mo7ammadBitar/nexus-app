@@ -272,6 +272,7 @@ const styles = {
         height: '100%',
         width: '100%',
         lineHeight: 'normal',
+        textAlign: 'center',
         margin: 0,
     },
     friendInfo: {

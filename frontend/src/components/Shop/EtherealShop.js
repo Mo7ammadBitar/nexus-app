@@ -276,10 +276,49 @@ const EtherealShop = ({ isOpen, onClose }) => {
                     0%, 100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
                     50% { box-shadow: 0 0 14px rgba(239, 68, 68, 0.9); }
                 }
+                @media (max-width: 768px) {
+                    .mobile-shop-modal {
+                        width: 100vw !important;
+                        max-width: 100vw !important;
+                        height: 100dvh !important;
+                        max-height: 100dvh !important;
+                        border-radius: 0 !important;
+                        border: none !important;
+                    }
+                    .mobile-shop-header {
+                        padding: 16px 16px 12px !important;
+                        flex-direction: column !important;
+                        align-items: flex-start !important;
+                        gap: 12px !important;
+                    }
+                    .mobile-header-right {
+                        width: 100% !important;
+                        justify-content: space-between !important;
+                    }
+                    .mobile-shop-content {
+                        padding: 16px !important;
+                    }
+                    .mobile-vision-card {
+                        flex-direction: column !important;
+                        text-align: center !important;
+                        gap: 16px !important;
+                        padding: 16px !important;
+                    }
+                    .mobile-vision-left {
+                        flex-direction: column !important;
+                    }
+                    .mobile-filter-row {
+                        flex-wrap: wrap !important;
+                        justify-content: center !important;
+                    }
+                    .mobile-relics-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
             `}</style>
-            <div style={shopStyles.container} onClick={e => e.stopPropagation()}>
+            <div style={shopStyles.container} className="mobile-shop-modal" onClick={e => e.stopPropagation()}>
                 {/* Header */}
-                <div style={shopStyles.header}>
+                <div style={shopStyles.header} className="mobile-shop-header">
                     <div>
                         <h2 style={shopStyles.title}>
                             <Sparkles size={20} style={{ color: '#a855f7', marginRight: 8 }} />
@@ -287,7 +326,7 @@ const EtherealShop = ({ isOpen, onClose }) => {
                         </h2>
                         <p style={shopStyles.subtitle}>{t('shop.subtitle', 'Connect to ancient relics and adorn your presence')}</p>
                     </div>
-                    <div style={shopStyles.headerRight}>
+                    <div style={shopStyles.headerRight} className="mobile-header-right">
                         <div style={shopStyles.shardsBadge}>
                             <Gem size={16} style={shopStyles.gemIcon} />
                             <span style={shopStyles.shardsAmount}>{shards}</span>
@@ -304,10 +343,10 @@ const EtherealShop = ({ isOpen, onClose }) => {
                     <div style={shopStyles.notification}>{notification}</div>
                 )}
 
-                <div style={shopStyles.content}>
+                <div style={shopStyles.content} className="mobile-shop-content">
                     {/* Astral Vision Card (Rewarded Ad) */}
-                    <div style={shopStyles.visionCard}>
-                        <div style={shopStyles.visionLeft}>
+                    <div style={shopStyles.visionCard} className="mobile-vision-card">
+                        <div style={shopStyles.visionLeft} className="mobile-vision-left">
                             <div style={shopStyles.visionOrb}>
                                 <Eye size={24} />
                             </div>
@@ -333,7 +372,7 @@ const EtherealShop = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Filter Tabs — using separate border properties to avoid React warnings */}
-                    <div style={shopStyles.filterRow}>
+                    <div style={shopStyles.filterRow} className="mobile-filter-row">
                         {['all', 'frame', 'bubble', 'treasury'].map(filter => (
                             <button
                                 key={filter}
@@ -354,7 +393,7 @@ const EtherealShop = ({ isOpen, onClose }) => {
 
                     {/* Treasury View */}
                     {activeFilter === 'treasury' ? (
-                        <div style={shopStyles.relicsGrid}>
+                        <div style={shopStyles.relicsGrid} className="mobile-relics-grid">
                             {SHARD_PACKS.map(pack => (
                                 <div key={pack.id} style={{ ...shopStyles.relicCard, position: 'relative', background: pack.popular ? 'linear-gradient(145deg, rgba(251, 191, 36, 0.1), rgba(0,0,0,0.2))' : shopStyles.relicCard.backgroundColor, borderColor: pack.popular ? 'rgba(251, 191, 36, 0.3)' : shopStyles.relicCard.borderColor }}>
                                     {pack.popular && (
@@ -387,7 +426,7 @@ const EtherealShop = ({ isOpen, onClose }) => {
                         ) : error ? (
                             <div style={shopStyles.error}>{error}</div>
                         ) : (
-                            <div style={shopStyles.relicsGrid}>
+                            <div style={shopStyles.relicsGrid} className="mobile-relics-grid">
                                 {filteredRelics.map(relic => (
                                     <div key={relic.id} style={shopStyles.relicCard} className="shop-preview">
                                         {/* Live Preview */}
