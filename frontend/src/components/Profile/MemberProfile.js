@@ -584,8 +584,15 @@ const styles = {
     },
     avatarText: {
         color: '#fff',
-        fontSize: '40px',
+        fontSize: 48,
         fontWeight: '700',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%',
+        width: '100%',
+        lineHeight: 'normal',
+        margin: 0,
     },
     premiumRing: {
         position: 'absolute',

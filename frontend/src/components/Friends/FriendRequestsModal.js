@@ -425,8 +425,15 @@ const styles = {
     },
     avatarText: {
         color: '#fff',
-        fontSize: '16px',
+        fontSize: '18px',
         fontWeight: '600',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%',
+        width: '100%',
+        lineHeight: 'normal',
+        margin: 0,
     },
     requestDetails: {
         display: 'flex',

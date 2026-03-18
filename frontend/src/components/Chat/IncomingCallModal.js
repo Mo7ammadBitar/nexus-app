@@ -184,6 +184,13 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 36,
         fontWeight: 'bold',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%',
+        width: '100%',
+        lineHeight: 'normal',
+        margin: 0,
     },
     callerName: {
         color: '#fff',

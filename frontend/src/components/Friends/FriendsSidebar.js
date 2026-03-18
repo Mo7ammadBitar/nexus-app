@@ -266,6 +266,13 @@ const styles = {
         color: '#fff',
         fontSize: '14px',
         fontWeight: '600',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%',
+        width: '100%',
+        lineHeight: 'normal',
+        margin: 0,
     },
     friendInfo: {
         flex: 1,

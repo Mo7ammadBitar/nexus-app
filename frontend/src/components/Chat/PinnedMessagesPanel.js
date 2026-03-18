@@ -248,8 +248,15 @@ const styles = StyleSheet.create({
     },
     avatarText: {
         color: '#fff',
-        fontSize: 12,
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontWeight: '600',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%',
+        width: '100%',
+        lineHeight: 'normal',
+        margin: 0,
     },
     username: {
         color: '#fff',

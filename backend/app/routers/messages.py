@@ -219,7 +219,15 @@ async def send_message(
     
     # >>> ADD THESE LINES: Broadcast the new message to the channel room <<<
     room = f"channel_{channel_id}"
-    await sio.emit("new_message", message, room=room, namespace="/chat")
+    
+    # Serialize datetime before emitting
+    safe_message = message.copy()
+    if "timestamp" in safe_message and hasattr(safe_message["timestamp"], "isoformat"):
+        safe_message["timestamp"] = safe_message["timestamp"].isoformat()
+    if "edited_at" in safe_message and safe_message["edited_at"] and hasattr(safe_message["edited_at"], "isoformat"):
+        safe_message["edited_at"] = safe_message["edited_at"].isoformat()
+        
+    await sio.emit("new_message", safe_message, room=room, namespace="/chat")
     
     return {"message": "Message sent", "data": message}
 
