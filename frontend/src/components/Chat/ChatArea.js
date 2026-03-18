@@ -14,7 +14,7 @@ import PinnedMessagesPanel from './PinnedMessagesPanel';
 import VoiceChannel from './VoiceChannel';
 import MemberProfile from '../Profile/MemberProfile';
 import { generateMessageLink, copyToClipboard } from '../../utils/messageLinkUtils';
-import { Smile, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Pin, Bell, Users, Hash, Sparkles, Eye, X } from 'lucide-react';
+import { Smile, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Pin, Bell, Users, Hash, Sparkles, Eye, X, ArrowLeft } from 'lucide-react';
 import {
     getAuraRingStyle,
     getAuraNameStyle,
@@ -25,6 +25,8 @@ import {
 } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
 import { resolveAssetUrl } from '../../config';
+import { useUIStore } from '../../store/uiStore';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 // Role badge config: maps server role → display label + color
 const ROLE_BADGES = {
@@ -82,6 +84,8 @@ const FRAME_INLINE_STYLES = {
 
 const ChatArea = () => {
     const { t } = useTranslation();
+    const { setMobileView } = useUIStore();
+    const isMobile = useIsMobile();
     const { currentChannel, messages, addMessage, updateMessage, removeMessage, fetchMessages, members, fetchMembers, currentServer } = useServerStore();
     const { user } = useAuthStore();
     const [messageText, setMessageText] = useState('');
@@ -748,6 +752,11 @@ const ChatArea = () => {
             {/* Header */}
             <div style={StyleSheet.flatten(styles.header)}>
                 <div style={StyleSheet.flatten(styles.headerLeft)}>
+                    {isMobile && (
+                        <TouchableOpacity onPress={() => setMobileView('nav')}>
+                            <ArrowLeft size={24} color="#b4b4b4" style={{ marginInlineEnd: 12 }} />
+                        </TouchableOpacity>
+                    )}
                     <Hash size={24} color="#9ca3af" style={{ marginInlineEnd: 8 }} />
                     <View>
                         <Text style={styles.headerTitle}>{currentChannel.name}</Text>

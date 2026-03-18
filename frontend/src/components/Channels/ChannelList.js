@@ -4,10 +4,12 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 
 import { Hash, Volume2, Lock, Settings, Trash2, Plus, Edit2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useServerStore } from '../../store/serverStore';
+import { useUIStore } from '../../store/uiStore';
 
 const ChannelList = () => {
     const { t } = useTranslation();
     const { channels, currentChannel, selectChannel, currentServer, createChannel, updateChannel, deleteChannel } = useServerStore();
+    const { setMobileView } = useUIStore();
     const [showCreate, setShowCreate] = useState(false);
     const [channelName, setChannelName] = useState('');
     const [channelType, setChannelType] = useState('text');
@@ -86,7 +88,10 @@ const ChannelList = () => {
                     styles.channelItem,
                     currentChannel?._id === channel._id && styles.channelItemActive
                 ]}
-                onPress={() => selectChannel(channel._id)}
+                onPress={() => {
+                    selectChannel(channel._id);
+                    setMobileView('chat');
+                }}
             >
                 <View style={styles.iconContainer}>
                     {channel.type === 'voice' ? (

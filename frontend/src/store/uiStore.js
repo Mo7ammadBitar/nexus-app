@@ -22,4 +22,17 @@ export const useUIStore = create((set) => ({
     // Autoplay Policy State
     audioBlocked: false,
     setAudioBlocked: (isBlocked) => set({ audioBlocked: isBlocked }),
+
+    // Mobile View State ('nav' | 'chat')
+    mobileView: 'nav',
+    setMobileView: (view) => {
+        set({ mobileView: view });
+        // Handle hardware back pushState interception exclusively if running in a browser
+        if (typeof window !== 'undefined' && view === 'chat') {
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                window.history.pushState({ mobileView: 'chat' }, '');
+            }
+        }
+    },
 }));

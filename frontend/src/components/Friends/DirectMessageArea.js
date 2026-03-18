@@ -18,12 +18,14 @@ const DMVoiceCall = lazy(() => import('../Chat/DMVoiceCall'));
 const MemberProfile = lazy(() => import('../Profile/MemberProfile'));
 import { copyToClipboard } from '../../utils/messageLinkUtils';
 import { initiateDMCall, cancelDMCall } from '../../services/socket';
-import { Smile, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Sparkles, Eye, X, Pin, Phone, PhoneOff } from 'lucide-react';
+import { Smile, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Sparkles, Eye, X, Pin, Phone, PhoneOff, ArrowLeft } from 'lucide-react';
 import { getAuraRingStyle, getAuraNameStyle, injectAuraAnimations } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-hot-toast';
 import { resolveAssetUrl } from '../../config';
+import { useUIStore } from '../../store/uiStore';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 // Inline styles for bubble relics — works even without CSS className support
 const BUBBLE_INLINE_STYLES = {
@@ -74,6 +76,8 @@ const FRAME_INLINE_STYLES = {
 };
 
 const DirectMessageArea = () => {
+    const { setMobileView } = useUIStore();
+    const isMobile = useIsMobile();
     const {
         currentDMFriend,
         dmMessages,
@@ -608,8 +612,8 @@ const DirectMessageArea = () => {
             `}</style>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity style={styles.backBtn} onPress={closeDM}>
-                    <Text style={styles.backIcon}>←</Text>
+                <TouchableOpacity style={styles.backBtn} onPress={() => { setMobileView('nav'); closeDM(); }}>
+                    <ArrowLeft size={24} color="#b4b4b4" />
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={{ flexDirection: 'row', alignItems: 'center', flex: 1, cursor: 'pointer' }}

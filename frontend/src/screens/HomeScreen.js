@@ -45,18 +45,31 @@ import IncomingCallModal from '../components/Chat/IncomingCallModal';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { initPresence, disconnectChatSocket } from '../services/socket';
 import { resolveAssetUrl } from '../config';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const HomeScreen = () => {
     const { t } = useTranslation();
     const { user, logout } = useAuthStore();
     const { currentServer, selectServer, selectChannel, fetchServers } = useServerStore();
     const { currentDMFriend, openDM, openDMById, closeDM, fetchFriends } = useFriendsStore();
-    const { showFriendsPanel: showFriendsMode, setShowFriendsPanel: setShowFriendsMode, isProfileModalOpen: showProfile, setProfileModalOpen: setShowProfile } = useUIStore();
+    const { showFriendsPanel: showFriendsMode, setShowFriendsPanel: setShowFriendsMode, isProfileModalOpen: showProfile, setProfileModalOpen: setShowProfile, mobileView, setMobileView } = useUIStore();
     const [showMembers, setShowMembers] = useState(true);
     const location = useLocation();
     const [showServerSettings, setShowServerSettings] = useState(false);
     const [showFriendRequests, setShowFriendRequests] = useState(false);
     const navigate = useNavigate();
+    const isMobile = useIsMobile();
+
+    // Hardware back-button interceptor for Mobile
+    useEffect(() => {
+        const handlePopState = (e) => {
+            if (isMobile && useUIStore.getState().mobileView === 'chat') {
+                useUIStore.getState().setMobileView('nav');
+            }
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [isMobile]);
 
     const canSeeSettings = currentServer?.my_role === 'owner' || currentServer?.my_role === 'moderator';
 
@@ -122,6 +135,7 @@ const HomeScreen = () => {
 
     const handleOpenDM = (friend) => {
         openDM(friend);
+        setMobileView('chat');
     };
 
     const handleOpenRequests = () => {
@@ -139,13 +153,15 @@ const HomeScreen = () => {
 
     return (
         <View style={styles.container}>
+            {(!isMobile || mobileView === 'nav') && (
+                <>
             {/* Server Sidebar (Icons) */}
             <ErrorBoundary>
                 <ServerSidebar onOpenFriends={handleOpenFriends} />
             </ErrorBoundary>
 
             {/* Channel Sidebar */}
-            <View style={styles.channelSidebar}>
+            <View style={[styles.channelSidebar, isMobile && { width: 'calc(100vw - 72px)', maxWidth: 'calc(100vw - 72px)' }]}>
                 {currentServer ? (
                     <>
                         <View style={styles.serverHeader}>
@@ -256,9 +272,12 @@ const HomeScreen = () => {
                     </TouchableOpacity>
                 </TouchableOpacity>
             </View>
+            </>
+            )}
 
             {/* Main Chat Area */}
-            <View style={styles.mainArea}>
+            {(!isMobile || mobileView === 'chat') && (
+            <View style={[styles.mainArea, isMobile && { flex: 1, width: '100vw' }]}>
                 {isDMMode ? (
                     <ErrorBoundary>
                         <DirectMessageArea />
@@ -289,9 +308,10 @@ const HomeScreen = () => {
                     </View>
                 )}
             </View>
+            )}
 
             {/* Member List */}
-            {currentServer && showMembers && !isDMMode && (
+            {!isMobile && currentServer && showMembers && !isDMMode && (
                 <MemberList />
             )}
 
