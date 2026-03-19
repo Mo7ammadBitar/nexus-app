@@ -17,6 +17,9 @@ class Database:
     @classmethod
     async def connect(cls):
         """Connect to MongoDB"""
+        if cls.client is not None:
+            return
+            
         cls.client = AsyncIOMotorClient(settings.mongodb_url)
         cls.db = cls.client[settings.database_name]
         
@@ -72,39 +75,53 @@ class Database:
         print("✅ Database indexes created")
 
 
+# Database check helper
+def _check_db():
+    if Database.db is None:
+        raise RuntimeError("Database not initialized. Call Database.connect() first.")
+
 def get_database() -> AsyncIOMotorDatabase:
     """Get database instance for dependency injection"""
+    _check_db()
     return Database.db
 
 
 # Collection accessors
 def get_users_collection():
+    _check_db()
     return Database.db.users
 
 
 def get_servers_collection():
+    _check_db()
     return Database.db.servers
 
 
 def get_members_collection():
+    _check_db()
     return Database.db.members
 
 
 def get_channels_collection():
+    _check_db()
     return Database.db.channels
 
 
 def get_messages_collection():
+    _check_db()
     return Database.db.messages
 
 
 def get_direct_messages_collection():
+    _check_db()
     return Database.db.direct_messages
 
 
 def get_friends_collection():
+    _check_db()
     return Database.db.friends
 
 
 def get_starred_messages_collection():
+    _check_db()
     return Database.db.starred_messages
