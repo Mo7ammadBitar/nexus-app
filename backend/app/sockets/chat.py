@@ -88,7 +88,7 @@ class ChatNamespace(socketio.AsyncNamespace):
         await self.enter_room(sid, str(user_id))
         return {"success": True}
     
-    async def on_disconnect(self, sid):
+    async def on_disconnect(self, sid, *args, **kwargs):
         """Handle user disconnection"""
         if sid in self.connected_users:
             user = self.connected_users[sid]
