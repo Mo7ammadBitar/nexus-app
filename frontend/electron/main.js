@@ -91,14 +91,15 @@ app.whenReady().then(() => {
                         "https://nexus-backend-api-1-e8dabjgja2gqfdh2.spaincentral-01.azurewebsites.net " +
                         "wss://nexus-backend-api-1-e8dabjgja2gqfdh2.spaincentral-01.azurewebsites.net " +
                         "https://*.cloudinary.com " +
+                        "https://pagead2.googlesyndication.com " +
                         "https://www.paypal.com https://www.sandbox.paypal.com; " +
                     "img-src 'self' data: blob: http://localhost:* " +
                         "https://nexus-backend-api-1-e8dabjgja2gqfdh2.spaincentral-01.azurewebsites.net " +
                         "https://*.cloudinary.com https://*; " +
                     "media-src 'self' blob: http://localhost:* " +
                         "https://nexus-backend-api-1-e8dabjgja2gqfdh2.spaincentral-01.azurewebsites.net; " +
-                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://www.sandbox.paypal.com; " +
-                    "frame-src 'self' https://www.paypal.com https://www.sandbox.paypal.com;"
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://*.doubleclick.net https://www.paypal.com https://www.sandbox.paypal.com; " +
+                    "frame-src 'self' https://googleads.g.doubleclick.net https://*.doubleclick.net https://www.paypal.com https://www.sandbox.paypal.com;"
                 ]
             }
         });
