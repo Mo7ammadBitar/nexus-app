@@ -7,6 +7,8 @@ from app.socket_instance import sio
 from app.middleware.auth import get_current_user
 from app.services.friend_service import FriendService
 from app.services.auth_service import AuthService
+from app.database import get_users_collection
+from app.services.oracle_service import ORACLE_ID, ORACLE_OID
 
 router = APIRouter(prefix="/friends", tags=["Friends"])
 
@@ -131,8 +133,36 @@ async def remove_friend(
 
 @router.get("")
 async def get_friends(current_user: dict = Depends(get_current_user)):
-    """Get list of all friends."""
+    """Get list of all friends, with The Oracle always injected at index 0."""
     friends = await FriendService.get_friends(current_user["_id"])
+
+    # --- Oracle On-the-fly Injection ---
+    # Check if Oracle is already in the real friends list (deduplication)
+    oracle_already_present = any(f.get("id") == ORACLE_ID for f in friends)
+
+    if not oracle_already_present:
+        try:
+            users = get_users_collection()
+            oracle_doc = await users.find_one({"_id": ORACLE_OID})
+
+            if oracle_doc and not oracle_doc.get("is_deleted"):
+                oracle_friend = {
+                    "id": str(oracle_doc["_id"]),
+                    "username": oracle_doc.get("username", "The Oracle"),
+                    "display_name": oracle_doc.get("display_name", "The Oracle"),
+                    "avatar_url": oracle_doc.get("avatar_url"),
+                    "avatar_type": oracle_doc.get("avatar_type", "static"),
+                    "status": oracle_doc.get("status", "online"),
+                    "is_online": True,  # Oracle is always online
+                    "is_premium": oracle_doc.get("is_premium", True),
+                    "accent_color": oracle_doc.get("accent_color"),
+                    "equipped_relics": oracle_doc.get("equipped_relics", {}),
+                }
+                friends.insert(0, oracle_friend)
+        except Exception as e:
+            # Never crash the friends list if Oracle lookup fails
+            print(f"⚠️ Oracle injection skipped: {e}")
+
     return {"friends": friends}
 
 
