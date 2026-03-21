@@ -1,29 +1,26 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
+import { useUIStore } from '../../store/uiStore';
 import { paymentsAPI } from '../../services/api';
 import PayPalCheckoutButton from '../Shop/PayPalCheckoutButton';
 import {
-    Crown, Palette, ShieldCheck, Sparkles, Gem,
-    Clock, ChevronRight, Zap, Star
+    Crown, Palette, Type, Sparkles, Image, PlaySquare,
+    CheckCircle, ChevronRight, Zap, Star, ShieldCheck, XCircle
 } from 'lucide-react';
 
 /**
- * NexusPrimeScreen — Premium subscription page with 3 states:
- *   'none'     → Upsell view with PayPal checkout
- *   'active'   → Active subscriber dashboard
- *   'lifetime' → Lifetime/Founder VIP dashboard
+ * NexusPrimeScreen — Premium subscription page with 2 states:
+ *   'none'   → Upsell view with PayPal checkout
+ *   'active' → Active subscriber dashboard
  */
 const NexusPrimeScreen = () => {
     const { user } = useAuthStore();
+    const { setProfileModalOpen } = useUIStore();
 
-    // Derive initial state from user data
-    const getInitialState = () => {
-        if (user?.prime_tier === 'lifetime') return 'lifetime';
-        if (user?.is_premium) return 'active';
-        return 'none';
-    };
-
-    const [primeState, setPrimeState] = useState(getInitialState);
+    // Derive state purely from user.is_premium
+    const [primeState, setPrimeState] = useState(() => {
+        return user?.is_premium ? 'active' : 'none';
+    });
     const [billingCycle, setBillingCycle] = useState('monthly');
     const [notification, setNotification] = useState(null);
 
@@ -47,6 +44,10 @@ const NexusPrimeScreen = () => {
         }
     };
 
+    const openSettings = () => {
+        setProfileModalOpen(true);
+    };
+
     const amount = billingCycle === 'monthly' ? '4.99' : '49.90';
     const displayName = user?.display_name || user?.username || 'Champion';
 
@@ -56,29 +57,36 @@ const NexusPrimeScreen = () => {
             icon: Palette,
             color: '#a855f7',
             glow: 'rgba(168, 85, 247, 0.35)',
-            title: 'Custom Identity',
-            desc: 'Personalize your profile with exclusive accent colors, animated auras, and unique name effects.',
+            title: 'Client Theme',
+            desc: 'Tint the entire application background and sidebar with your chosen color.',
         },
         {
-            icon: ShieldCheck,
-            color: '#10b981',
-            glow: 'rgba(16, 185, 129, 0.35)',
-            title: 'Ad-Free Realm',
-            desc: 'Experience Nexus without interruptions. No ads, no distractions — pure communication.',
+            icon: Type,
+            color: '#6366f1',
+            glow: 'rgba(99, 102, 241, 0.35)',
+            title: 'Name Accent',
+            desc: 'Customize the color of your username across the entire platform.',
         },
         {
             icon: Sparkles,
             color: '#f59e0b',
             glow: 'rgba(245, 158, 11, 0.35)',
-            title: 'Elite Status',
-            desc: 'Stand out with a premium badge, exclusive relics, and priority access to new features.',
+            title: 'Elite Aura',
+            desc: 'Stand out with a special glowing aura and border around your avatar and name.',
         },
         {
-            icon: Gem,
-            color: '#6366f1',
-            glow: 'rgba(99, 102, 241, 0.35)',
-            title: 'Monthly Tribute',
-            desc: 'Receive bonus Shards every month to spend in the Ethereal Shop on cosmetics.',
+            icon: Image,
+            color: '#10b981',
+            glow: 'rgba(16, 185, 129, 0.35)',
+            title: 'Profile Banner',
+            desc: 'Upload a personalized banner image for your profile page.',
+        },
+        {
+            icon: PlaySquare,
+            color: '#ec4899',
+            glow: 'rgba(236, 72, 153, 0.35)',
+            title: 'Animated Avatar',
+            desc: 'Support for uploading .gif animated profile pictures that come alive.',
         },
     ];
 
@@ -101,11 +109,6 @@ const NexusPrimeScreen = () => {
                         0%, 100% { transform: translateY(0px); }
                         50% { transform: translateY(-6px); }
                     }
-                    .prime-card:hover {
-                        border-color: rgba(168,85,247,0.4) !important;
-                        box-shadow: 0 0 20px rgba(168,85,247,0.15) !important;
-                        transform: translateY(-3px) !important;
-                    }
                     .prime-toggle-option {
                         transition: all 0.3s ease;
                     }
@@ -121,7 +124,7 @@ const NexusPrimeScreen = () => {
                             : 'rgba(168,85,247,0.1)',
                     }}>
                         {notification.type === 'error'
-                            ? <ShieldCheck size={16} color="#ef4444" />
+                            ? <XCircle size={16} color="#ef4444" />
                             : <Sparkles size={16} color="#a855f7" />
                         }
                         <span style={{ color: '#e2e8f0', fontSize: 14 }}>{notification.msg}</span>
@@ -148,7 +151,7 @@ const NexusPrimeScreen = () => {
                         {features.map((f, i) => {
                             const Icon = f.icon;
                             return (
-                                <div key={i} className="prime-card" style={s.featureCard}>
+                                <div key={i} style={s.featureCard}>
                                     <div style={{ ...s.iconPlate, background: `radial-gradient(circle, ${f.glow}, transparent 70%)` }}>
                                         <div style={{ ...s.iconCircle, borderColor: `${f.color}55`, boxShadow: `0 0 18px ${f.glow}` }}>
                                             <Icon size={22} color={f.color} />
@@ -213,7 +216,7 @@ const NexusPrimeScreen = () => {
                         </div>
 
                         <p style={s.disclaimer}>
-                            Secure checkout powered by PayPal. Cancel anytime.
+                            Secure checkout powered by PayPal.
                         </p>
                     </div>
                 </div>
@@ -222,10 +225,8 @@ const NexusPrimeScreen = () => {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  STATE 2 & 3: ACTIVE / LIFETIME DASHBOARD
+    //  STATE 2: ACTIVE DASHBOARD
     // ═══════════════════════════════════════════════════════════════
-    const isLifetime = primeState === 'lifetime';
-
     return (
         <div style={s.root}>
             <style>{`
@@ -260,68 +261,45 @@ const NexusPrimeScreen = () => {
                     <div style={s.heroCrownWrap}>
                         <Crown
                             size={40}
-                            color={isLifetime ? '#fbbf24' : '#a855f7'}
+                            color="#a855f7"
                             style={{ animation: 'primeGlow 3s ease-in-out infinite' }}
                         />
                     </div>
                     <h1 style={s.dashTitle}>
                         Welcome to the Elite,{' '}
-                        <span style={isLifetime ? s.dashNameGold : s.dashNamePurple}>
+                        <span style={s.dashNamePurple}>
                             {displayName}
                         </span>
                     </h1>
                     <p style={s.heroSubtitle}>
-                        {isLifetime
-                            ? 'You are a Nexus Founder. Your legacy is eternal.'
-                            : 'You are a Nexus Prime member. Enjoy your exclusive perks.'
-                        }
+                        You are a Nexus Prime member. Enjoy your exclusive perks.
                     </p>
                 </div>
 
                 {/* ── Status Card ── */}
-                <div style={{
-                    ...s.statusCard,
-                    ...(isLifetime ? s.statusCardLifetime : {}),
-                }}>
+                <div style={s.statusCard}>
                     <div style={s.statusRow}>
-                        {isLifetime ? (
-                            <>
-                                <Crown size={22} color="#fbbf24" style={{ filter: 'drop-shadow(0 0 6px rgba(251,191,36,0.5))', marginRight: 12 }} />
-                                <div>
-                                    <p style={s.statusLabel}>Subscription Renewal</p>
-                                    <p style={s.statusValueGold}>NEVER!</p>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <Clock size={22} color="#a855f7" style={{ filter: 'drop-shadow(0 0 6px rgba(168,85,247,0.5))', marginRight: 12 }} />
-                                <div>
-                                    <p style={s.statusLabel}>Subscription Renewal</p>
-                                    <p style={s.statusValue}>Your subscription renews in 25 days</p>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                    {isLifetime && (
-                        <div style={s.founderBadge}>
-                            <Star size={12} color="#fbbf24" style={{ marginRight: 4 }} />
-                            Founder
+                        <CheckCircle size={22} color="#10b981" style={{ filter: 'drop-shadow(0 0 6px rgba(16,185,129,0.5))', marginRight: 12 }} />
+                        <div>
+                            <p style={s.statusLabel}>Membership Status</p>
+                            <p style={s.statusValueGreen}>Active Elite Member — All perks unlocked.</p>
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 {/* ── Quick Actions ── */}
                 <h2 style={s.sectionTitle}>Quick Actions</h2>
                 <div style={s.actionsGrid}>
                     {[
-                        { icon: Palette, label: 'Manage Accent Colors', desc: 'Customize your profile palette', color: '#a855f7' },
-                        { icon: Gem, label: 'Claim Monthly Shards', desc: 'Collect your bonus tribute', color: '#6366f1' },
-                        { icon: ShieldCheck, label: 'Privacy Settings', desc: 'Manage your ad-free experience', color: '#10b981' },
-                        { icon: Sparkles, label: 'Exclusive Relics', desc: 'Browse Prime-only cosmetics', color: '#f59e0b' },
+                        { icon: Palette, label: 'Client Theme', desc: 'Tint the entire application background and sidebar', color: '#a855f7' },
+                        { icon: Type, label: 'Name Accent', desc: 'Customize the color of your username', color: '#6366f1' },
+                        { icon: Sparkles, label: 'Elite Aura', desc: 'Configure your glowing aura and avatar border', color: '#f59e0b' },
+                        { icon: Image, label: 'Profile Banner', desc: 'Upload a personalized banner for your profile', color: '#10b981' },
+                        { icon: PlaySquare, label: 'Animated Avatar', desc: 'Upload a .gif animated profile picture', color: '#ec4899' },
                     ].map((action, i) => {
                         const Icon = action.icon;
                         return (
-                            <div key={i} className="dash-action" style={s.actionCard}>
+                            <div key={i} className="dash-action" style={s.actionCard} onClick={openSettings}>
                                 <div style={{ ...s.actionIconWrap, borderColor: `${action.color}33`, boxShadow: `0 0 12px ${action.color}22` }}>
                                     <Icon size={20} color={action.color} />
                                 </div>
@@ -539,7 +517,7 @@ const s = {
         margin: '0 0 20px',
     },
 
-    // ── Dashboard (State 2 & 3) ──
+    // ── Dashboard ──
     dashHeader: {
         textAlign: 'center',
         marginBottom: 36,
@@ -554,12 +532,6 @@ const s = {
     },
     dashNamePurple: {
         background: 'linear-gradient(135deg, #a855f7, #c084fc)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
-    },
-    dashNameGold: {
-        background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
         backgroundClip: 'text',
@@ -580,11 +552,6 @@ const s = {
         overflow: 'hidden',
         transition: 'all 0.3s ease',
     },
-    statusCardLifetime: {
-        borderColor: 'rgba(251,191,36,0.35)',
-        boxShadow: '0 0 30px rgba(251,191,36,0.08), inset 0 0 30px rgba(251,191,36,0.03)',
-        background: 'linear-gradient(135deg, rgba(251,191,36,0.06), rgba(245,158,11,0.02))',
-    },
     statusRow: {
         display: 'flex',
         alignItems: 'center',
@@ -597,35 +564,11 @@ const s = {
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
     },
-    statusValue: {
-        color: '#c4b5fd',
+    statusValueGreen: {
+        color: '#4ade80',
         fontSize: 15,
         fontWeight: 600,
         margin: 0,
-    },
-    statusValueGold: {
-        color: '#fbbf24',
-        fontSize: 20,
-        fontWeight: 800,
-        margin: 0,
-        letterSpacing: '0.04em',
-        filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.4))',
-    },
-    founderBadge: {
-        position: 'absolute',
-        top: 16,
-        right: 20,
-        display: 'flex',
-        alignItems: 'center',
-        fontSize: 11,
-        fontWeight: 700,
-        color: '#fbbf24',
-        backgroundColor: 'rgba(251,191,36,0.12)',
-        padding: '4px 12px',
-        borderRadius: 20,
-        borderWidth: 1,
-        borderStyle: 'solid',
-        borderColor: 'rgba(251,191,36,0.25)',
     },
 
     sectionTitle: {
