@@ -32,7 +32,7 @@ SHARD_PACKS = {
 
 ELITE_PLANS = {
     "monthly": {"price": 4.99,  "duration": timedelta(days=30)},
-    "yearly":  {"price": 39.99, "duration": timedelta(days=365)},
+    "yearly":  {"price": 49.90, "duration": timedelta(days=365)},
 }
 
 
@@ -180,7 +180,7 @@ async def verify_elite_subscription(
     now = datetime.utcnow()
     expires_at = now + plan["duration"]
 
-    await users.find_one_and_update(
+    updated_user = await users.find_one_and_update(
         {"_id": ObjectId(current_user["_id"])},
         {
             "$set": {
@@ -190,12 +190,14 @@ async def verify_elite_subscription(
                 "premium_expires_at": expires_at,
             }
         },
+        return_document=True,
     )
 
     return {
         "status": "success",
         "message": "Welcome to Nexus Elite! All features unlocked.",
         "is_premium": True,
-        "plan": request.plan,
+        "premium_plan": request.plan,
+        "subscribed_at": now.isoformat(),
         "premium_expires_at": expires_at.isoformat(),
     }

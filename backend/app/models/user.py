@@ -114,6 +114,7 @@ class UserResponse(BaseModel):
     display_name: Optional[str] = None
     role: UserRole
     is_premium: bool = False
+    premium_plan: Optional[str] = None  # 'monthly' | 'yearly' | None
     premium_since: Optional[datetime] = None
     premium_expires_at: Optional[datetime] = None
     avatar_url: Optional[str] = None
@@ -165,6 +166,7 @@ class UserInDB(BaseModel):
     
     # Premium
     is_premium: bool = False
+    premium_plan: Optional[str] = None  # 'monthly' | 'yearly' | None
     premium_since: Optional[datetime] = None
     premium_expires_at: Optional[datetime] = None
     accent_color: Optional[str] = None
