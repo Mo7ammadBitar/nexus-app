@@ -344,7 +344,7 @@ const DMVoiceCall = ({ currentDMFriend, onEndCall }) => {
             console.log('🧹 Cleanup: Destroying DM peers and disconnecting...');
             handleLeaveVoice(true); // pass true for "silent" clean up (without triggering onEndCall prop again)
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line
     }, [currentDMFriend]);
 
     const handleJoinVoice = async () => {

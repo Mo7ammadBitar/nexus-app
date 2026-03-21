@@ -45,6 +45,7 @@ import IncomingCallModal from '../components/Chat/IncomingCallModal';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { initPresence, disconnectChatSocket } from '../services/socket';
 import { resolveAssetUrl } from '../config';
+import NexusPrimeScreen from '../components/Prime/NexusPrimeScreen';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 const HomeScreen = () => {
@@ -52,7 +53,7 @@ const HomeScreen = () => {
     const { user, logout } = useAuthStore();
     const { currentServer, selectServer, selectChannel, fetchServers } = useServerStore();
     const { currentDMFriend, openDM, openDMById, closeDM, fetchFriends } = useFriendsStore();
-    const { showFriendsPanel: showFriendsMode, setShowFriendsPanel: setShowFriendsMode, isProfileModalOpen: showProfile, setProfileModalOpen: setShowProfile, mobileView, setMobileView } = useUIStore();
+    const { showFriendsPanel: showFriendsMode, setShowFriendsPanel: setShowFriendsMode, isProfileModalOpen: showProfile, setProfileModalOpen: setShowProfile, mobileView, setMobileView, showPrimeScreen, setShowPrimeScreen } = useUIStore();
     const [showMembers, setShowMembers] = useState(true);
     const location = useLocation();
     const [showServerSettings, setShowServerSettings] = useState(false);
@@ -99,8 +100,6 @@ const HomeScreen = () => {
                     await selectServer(serverId);
                     // selectServer selects default channel, override if specific one needed
                     if (channelId) {
-                        // We need to wait a tick for store to update? 
-                        // selectServer is async so it should be ready
                         useServerStore.getState().selectChannel(channelId);
                     }
                 } else if (useServerStore.getState().currentChannel?._id !== channelId) {
@@ -114,7 +113,6 @@ const HomeScreen = () => {
             if (dmMatch) {
                 const { friendId } = dmMatch.params;
                 if (currentDMFriend?._id !== friendId && currentDMFriend?.id !== friendId) {
-                    // Switch to friends mode UI locally first to avoid flicker?
                     setShowFriendsMode(true);
                     await openDMById(friendId);
                 }
@@ -129,8 +127,17 @@ const HomeScreen = () => {
         // Clear server selection when opening friends
         useServerStore.getState().clearServer();
         setShowFriendsMode(true);
+        setShowPrimeScreen(false);
         fetchFriends();
         navigate('/');
+    };
+
+    const handleOpenPrime = () => {
+        // Clear server/DM views and show Prime screen
+        useServerStore.getState().clearServer();
+        closeDM();
+        setShowFriendsMode(false);
+        setShowPrimeScreen(true);
     };
 
     const handleOpenDM = (friend) => {
@@ -157,7 +164,7 @@ const HomeScreen = () => {
                 <>
             {/* Server Sidebar (Icons) */}
             <ErrorBoundary>
-                <ServerSidebar onOpenFriends={handleOpenFriends} />
+                <ServerSidebar onOpenFriends={handleOpenFriends} onOpenPrime={handleOpenPrime} />
             </ErrorBoundary>
 
             {/* Channel Sidebar */}
@@ -219,7 +226,7 @@ const HomeScreen = () => {
                             ...styles.avatar,
                             border: (!hasFrame && isPremium) ? 'none' : styles.avatar.border,
                             backgroundColor: (!hasFrame && isPremium) ? 'transparent' : styles.avatar.backgroundColor,
-                            position: 'relative' // Ensure relative positioning for absolute children
+                            position: 'relative'
                         }}>
                             {/* Premium Aura Ring — only if no frame equipped */}
                             {!hasFrame && <div style={getAuraRingStyle(isPremium, user?.accent_color, { size: 'small' })} />}
@@ -278,7 +285,9 @@ const HomeScreen = () => {
             {/* Main Chat Area */}
             {(!isMobile || mobileView === 'chat') && (
             <View style={[styles.mainArea, isMobile && { flex: 1, width: '100vw' }]}>
-                {isDMMode ? (
+                {showPrimeScreen ? (
+                    <NexusPrimeScreen />
+                ) : isDMMode ? (
                     <ErrorBoundary>
                         <DirectMessageArea />
                     </ErrorBoundary>

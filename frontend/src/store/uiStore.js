@@ -15,6 +15,9 @@ export const useUIStore = create((set) => ({
     isShopOpen: false,
     setShopOpen: (isOpen) => set({ isShopOpen: isOpen }),
 
+    showPrimeScreen: false,
+    setShowPrimeScreen: (show) => set({ showPrimeScreen: show }),
+
     // Global Error State (fallback for general app errors without boundaries)
     globalError: null,
     setGlobalError: (error) => set({ globalError: error }),

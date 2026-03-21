@@ -4,12 +4,12 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 
 import { useServerStore } from '../../store/serverStore';
 import { useFriendsStore } from '../../store/friendsStore';
 import { useUIStore } from '../../store/uiStore';
-import { Search, Users, Plus, Sparkles, Link, ShoppingBag } from 'lucide-react';
+import { Search, Users, Plus, Sparkles, Link, ShoppingBag, Crown } from 'lucide-react';
 import GlobalSearch from '../Search/GlobalSearch';
 import EtherealShop from '../Shop/EtherealShop';
 import { useTranslation } from 'react-i18next';
 
-const ServerSidebar = ({ onOpenFriends }) => {
+const ServerSidebar = ({ onOpenFriends, onOpenPrime }) => {
     const { t } = useTranslation();
     const { servers, currentServer, selectServer, createServer, joinServer, fetchServers } = useServerStore();
     const { pendingRequests, fetchPendingRequests, totalUnread, fetchUnreadCounts } = useFriendsStore();
@@ -141,6 +141,17 @@ const ServerSidebar = ({ onOpenFriends }) => {
                     title="Ethereal Shop"
                 >
                     <ShoppingBag size={24} color="#f59e0b" />
+                </TouchableOpacity>
+
+                <div style={StyleSheet.flatten(styles.separator)} />
+
+                {/* Prime Button */}
+                <TouchableOpacity
+                    style={styles.primeIcon}
+                    onPress={onOpenPrime}
+                    title="Nexus Prime"
+                >
+                    <Crown size={24} color="#a855f7" />
                 </TouchableOpacity>
             </ScrollView>
 
@@ -456,6 +467,19 @@ const styles = StyleSheet.create({
         transition: 'all 0.2s ease',
         borderWidth: 1,
         borderColor: 'rgba(245, 158, 11, 0.2)',
+    },
+    primeIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(168, 85, 247, 0.12)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        borderWidth: 1,
+        borderColor: 'rgba(168, 85, 247, 0.2)',
     },
     modalOverlay: {
         position: 'fixed',
