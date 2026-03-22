@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { useShopStore } from '../../store/shopStore';
+import { useAuthStore } from '../../store/authStore';
 import { useServerStore } from '../../store/serverStore';
 import useRewardedAd from './AdProvider';
 import PayPalCheckoutButton from './PayPalCheckoutButton';
@@ -31,6 +32,7 @@ export const RELIC_CSS_MAP = {
  */
 const EtherealShop = ({ isOpen, onClose }) => {
     const { t } = useTranslation();
+    const { updateUser } = useAuthStore();
     const {
         shards, relicsCatalog, isLoading, error,
         fetchShop, claimReward, buyRelic, equipRelic, unequipRelic
@@ -56,6 +58,10 @@ const EtherealShop = ({ isOpen, onClose }) => {
         setBoosting(true);
         try {
             const response = await shopAPI.buyServerBoost();
+            
+            // Update auth store with the new inventory boost count
+            updateUser({ available_server_boosts: response.data.available_server_boosts });
+
             showNotification(
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Rocket size={16} color="#a855f7" />
