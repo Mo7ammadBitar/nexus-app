@@ -112,9 +112,22 @@ const ServerSidebar = ({ onOpenFriends, onOpenPrime }) => {
                             ]}
                             onPress={() => selectServer(server._id)}
                         >
-                            <Text style={styles.serverIconText}>
-                                {server.name?.charAt(0).toUpperCase()}
-                            </Text>
+                            {server.icon_url ? (
+                                <img
+                                    src={server.icon_url}
+                                    alt={server.name}
+                                    style={{
+                                        width: 48,
+                                        height: 48,
+                                        borderRadius: 24,
+                                        objectFit: 'cover',
+                                    }}
+                                />
+                            ) : (
+                                <Text style={styles.serverIconText}>
+                                    {server.name?.charAt(0).toUpperCase()}
+                                </Text>
+                            )}
                             {currentServer?._id === server._id && (
                                 <div style={StyleSheet.flatten(styles.activeIndicator)} />
                             )}

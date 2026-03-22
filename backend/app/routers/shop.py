@@ -2,11 +2,12 @@
 Shop Routes - Relic Catalog, Purchase, Equip/Unequip
 """
 from fastapi import APIRouter, HTTPException, status, Depends
+from pydantic import BaseModel
 from datetime import datetime
 from bson import ObjectId
 
 from app.middleware.auth import get_current_user
-from app.database import get_users_collection
+from app.database import get_users_collection, get_servers_collection
 
 router = APIRouter(prefix="/shop", tags=["Shop"])
 
@@ -309,3 +310,63 @@ async def get_inventory(current_user: dict = Depends(get_current_user)):
         "equipped_relics": equipped,
         "aether_shards": current_user.get("aether_shards", 0) or 0
     }
+
+
+# ============ Server Boost ============
+
+BOOST_COST = 1000  # Aether Shards
+
+
+class ServerBoostRequest(BaseModel):
+    """Buy a server boost"""
+    server_id: str
+
+
+@router.post("/buy-server-boost")
+async def buy_server_boost(
+    request: ServerBoostRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Purchase a permanent Server Boost for 1000 Aether Shards."""
+    # Check shard balance
+    current_shards = current_user.get("aether_shards", 0) or 0
+    if current_shards < BOOST_COST:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Insufficient Aether Shards. Need {BOOST_COST}, have {current_shards}."
+        )
+
+    # Verify server exists
+    servers = get_servers_collection()
+    server = await servers.find_one({"_id": ObjectId(request.server_id)})
+    if not server:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Server not found"
+        )
+
+    # Deduct shards from user
+    new_balance = current_shards - BOOST_COST
+    users = get_users_collection()
+    await users.update_one(
+        {"_id": ObjectId(current_user["_id"])},
+        {"$set": {"aether_shards": new_balance, "updated_at": datetime.utcnow()}}
+    )
+
+    # Increment server boost level
+    updated_server = await servers.find_one_and_update(
+        {"_id": ObjectId(request.server_id)},
+        {
+            "$inc": {"boost_level": 1},
+            "$set": {"updated_at": datetime.utcnow()},
+        },
+        return_document=True
+    )
+
+    return {
+        "message": f"Server boosted! {server['name']} is now Boost Level {updated_server['boost_level']}!",
+        "new_balance": new_balance,
+        "boost_level": updated_server["boost_level"],
+        "server_id": request.server_id,
+    }
+

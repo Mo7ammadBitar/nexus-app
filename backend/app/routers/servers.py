@@ -1,11 +1,12 @@
 """
 Server Routes - Server, Channel, Member Management
 """
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from typing import List
 
 from app.middleware.auth import get_current_user
 from app.services.server_service import ServerService, MemberService, ChannelService
+from app.services.cloudinary_service import upload_file as cloudinary_upload
 from app.schemas.server import (
     CreateServerRequest,
     UpdateServerRequest,
@@ -467,3 +468,77 @@ async def remove_member_from_channel(
     
     channel = await ChannelService.remove_member_from_channel(channel_id, user_id)
     return {"message": "Member removed from channel", "channel": channel}
+
+
+# ============ Server Asset Uploads ============
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
+
+@router.post("/{server_id}/icon")
+async def upload_server_icon(
+    server_id: str,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload server icon (owner only). Free for all servers."""
+    # Check ownership
+    member = await MemberService.get_member(server_id, current_user["_id"])
+    if not member or member["role"] != ServerRole.OWNER.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only server owner can change server icon"
+        )
+
+    # Validate file type
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file type. Allowed: jpg, png, gif, webp"
+        )
+
+    # Upload to Cloudinary
+    icon_url = await cloudinary_upload(file, folder="nexus/server_icons")
+
+    # Save to database
+    updated = await ServerService.update_server(server_id, {"icon_url": icon_url})
+    return {"message": "Server icon updated", "icon_url": icon_url, "server": updated}
+
+
+@router.post("/{server_id}/banner")
+async def upload_server_banner(
+    server_id: str,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload server banner (owner only). Requires boost_level >= 1."""
+    # Check ownership
+    member = await MemberService.get_member(server_id, current_user["_id"])
+    if not member or member["role"] != ServerRole.OWNER.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only server owner can change server banner"
+        )
+
+    # Verify boost level
+    server = await ServerService.get_server_by_id(server_id)
+    if not server or server.get("boost_level", 0) < 1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Server needs at least Boost Level 1 to unlock custom banners"
+        )
+
+    # Validate file type
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file type. Allowed: jpg, png, gif, webp"
+        )
+
+    # Upload to Cloudinary
+    banner_url = await cloudinary_upload(file, folder="nexus/server_banners")
+
+    # Save to database
+    updated = await ServerService.update_server(server_id, {"banner_url": banner_url})
+    return {"message": "Server banner updated", "banner_url": banner_url, "server": updated}
+

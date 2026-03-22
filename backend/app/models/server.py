@@ -31,6 +31,7 @@ class ServerUpdate(BaseModel):
     """Update server request"""
     name: Optional[str] = Field(None, min_length=2, max_length=100)
     icon_url: Optional[str] = None
+    banner_url: Optional[str] = None
 
 
 class ServerResponse(BaseModel):
@@ -38,6 +39,8 @@ class ServerResponse(BaseModel):
     id: str = Field(..., alias="_id")
     name: str
     icon_url: Optional[str] = None
+    banner_url: Optional[str] = None
+    boost_level: int = 0
     owner_id: str
     invite_code: str
     member_count: int = 0
@@ -58,6 +61,8 @@ class ServerInDB(BaseModel):
     id: Optional[str] = Field(None, alias="_id")
     name: str
     icon_url: Optional[str] = None
+    banner_url: Optional[str] = None
+    boost_level: int = 0
     owner_id: str
     invite_code: str
     

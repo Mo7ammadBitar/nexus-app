@@ -114,6 +114,10 @@ export const serversAPI = {
     createChannel: (serverId, name, type) => api.post(`/servers/${serverId}/channels`, { name, type }),
     updateChannel: (serverId, channelId, data) => api.put(`/servers/${serverId}/channels/${channelId}`, data),
     deleteChannel: (serverId, channelId) => api.delete(`/servers/${serverId}/channels/${channelId}`),
+
+    // Server Assets
+    uploadIcon: (serverId, formData) => api.post(`/servers/${serverId}/icon`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    uploadBanner: (serverId, formData) => api.post(`/servers/${serverId}/banner`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
 // Messages API
@@ -254,6 +258,7 @@ export const shopAPI = {
     equipRelic: (relicId) => api.post(`/shop/equip/${relicId}`),
     unequipRelic: (slot) => api.post(`/shop/unequip/${slot}`),
     getInventory: () => api.get('/shop/inventory'),
+    buyServerBoost: (serverId) => api.post('/shop/buy-server-boost', { server_id: serverId }),
 };
 
 // The Oracle - System Bot

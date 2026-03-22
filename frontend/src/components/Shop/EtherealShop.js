@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { useShopStore } from '../../store/shopStore';
+import { useServerStore } from '../../store/serverStore';
 import useRewardedAd from './AdProvider';
 import PayPalCheckoutButton from './PayPalCheckoutButton';
-import { paymentsAPI } from '../../services/api';
-import { Gem, Sparkles, Eye, X, LayoutGrid, Frame, MessageCircle, XCircle, Check, Coins } from 'lucide-react';
+import { paymentsAPI, shopAPI } from '../../services/api';
+import { Gem, Sparkles, Eye, X, LayoutGrid, Frame, MessageCircle, XCircle, Check, Coins, Rocket } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 // Maps relic IDs to their CSS class names
@@ -34,16 +35,46 @@ const EtherealShop = ({ isOpen, onClose }) => {
         shards, relicsCatalog, isLoading, error,
         fetchShop, claimReward, buyRelic, equipRelic, unequipRelic
     } = useShopStore();
+    const { servers } = useServerStore();
 
     const { showRewardedAd, AdModal } = useRewardedAd();
     const [notification, setNotification] = useState(null);
     const [claimingReward, setClaimingReward] = useState(false);
     const [buyingId, setBuyingId] = useState(null);
     const [activeFilter, setActiveFilter] = useState('all');
+    
+    // Server Boost State
+    const [showBoostModal, setShowBoostModal] = useState(false);
+    const [boostingServerId, setBoostingServerId] = useState('');
+    const [boosting, setBoosting] = useState(false);
 
     useEffect(() => {
         if (isOpen) fetchShop();
     }, [isOpen]);
+
+    const handleBuyBoost = async () => {
+        if (!boostingServerId) return;
+        setBoosting(true);
+        try {
+            const response = await shopAPI.buyServerBoost(boostingServerId);
+            showNotification(
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Rocket size={16} color="#a855f7" />
+                    <span>{response.data.message}</span>
+                </div>
+            );
+            fetchShop(); // refresh shards
+            setShowBoostModal(false);
+        } catch (err) {
+            showNotification(
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <XCircle size={16} color="#ef4444" />
+                    <span>{err.response?.data?.detail || 'Failed to buy Server Boost'}</span>
+                </div>
+            );
+        }
+        setBoosting(false);
+    };
 
     const showNotification = (msg) => {
         setNotification(msg);
@@ -394,6 +425,34 @@ const EtherealShop = ({ isOpen, onClose }) => {
                     {/* Treasury View */}
                     {activeFilter === 'treasury' ? (
                         <div style={shopStyles.relicsGrid} className="mobile-relics-grid">
+                            
+                            {/* Server Boost Card */}
+                            <div style={{ ...shopStyles.relicCard, position: 'relative', background: 'linear-gradient(145deg, rgba(168, 85, 247, 0.1), rgba(0,0,0,0.2))', borderColor: 'rgba(168, 85, 247, 0.3)' }}>
+                                <div style={{ position: 'absolute', top: 0, right: 0, background: '#a855f7', color: '#fff', fontSize: 10, fontWeight: 'bold', padding: '4px 8px', borderBottomLeftRadius: 8, zIndex: 2 }}>
+                                    PREMIUM
+                                </div>
+                                <div style={{ padding: 20, textAlign: 'center' }}>
+                                    <div style={{ width: 60, height: 60, borderRadius: 30, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                                        <Rocket size={28} color="#a855f7" style={{ filter: 'drop-shadow(0 0 10px #a855f7)' }} />
+                                    </div>
+                                    <h3 style={{ color: '#fff', fontSize: 16, fontWeight: 'bold', margin: '0 0 4px' }}>Server Boost</h3>
+                                    <p style={{ color: '#aaa', fontSize: 13, margin: '0 0 4px', minHeight: 40 }}>Unlock Custom Server Banners for a specific server</p>
+                                    <p style={{ color: '#fbbf24', fontSize: 18, fontWeight: '700', margin: '0 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                                        1000 <Gem size={16} color="#fbbf24" style={{ filter: 'drop-shadow(0 0 2px #fbbf24)' }} />
+                                    </p>
+                                    
+                                    <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                                        <button 
+                                            style={shopStyles.buyBtn} 
+                                            onClick={() => setShowBoostModal(true)}
+                                        >
+                                            Buy Boost
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Shard Packs */}
                             {SHARD_PACKS.map(pack => (
                                 <div key={pack.id} style={{ ...shopStyles.relicCard, position: 'relative', background: pack.popular ? 'linear-gradient(145deg, rgba(251, 191, 36, 0.1), rgba(0,0,0,0.2))' : shopStyles.relicCard.backgroundColor, borderColor: pack.popular ? 'rgba(251, 191, 36, 0.3)' : shopStyles.relicCard.borderColor }}>
                                     {pack.popular && (
@@ -495,6 +554,86 @@ const EtherealShop = ({ isOpen, onClose }) => {
                 </div>
             </div>
             {AdModal}
+            
+            {/* Server Boost Selection Modal */}
+            {showBoostModal && (
+                <div style={{ ...shopStyles.overlay, zIndex: 4010 }}>
+                    <div style={{ ...shopStyles.container, width: 440, height: 'auto', padding: 24, display: 'block' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <h3 style={{ color: '#fff', fontSize: 18, margin: 0, display: 'flex', alignItems: 'center' }}>
+                                <Rocket size={20} color="#a855f7" style={{ marginRight: 8 }} />
+                                Boost a Server
+                            </h3>
+                            <button style={shopStyles.closeBtn} onClick={() => setShowBoostModal(false)}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <p style={{ color: '#aaa', fontSize: 14, marginBottom: 20, lineHeight: 1.5 }}>
+                            Select a server to bestow a permanent level 1 Boost. This will unlock the ability to set a <strong>Custom Server Banner</strong> for that server.
+                        </p>
+
+                        <div style={{ maxHeight: 280, overflowY: 'auto', marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
+                            {servers.length === 0 ? (
+                                <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px 0' }}>You are not in any servers.</p>
+                            ) : (
+                                servers.filter(s => s.my_role === 'owner').length === 0 ? (
+                                    <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px 0' }}>You are not the Prime (owner) of any servers. Only owners can utilize a Server Boost.</p>
+                                ) : (
+                                    servers.filter(s => s.my_role === 'owner').map(server => (
+                                        <div
+                                            key={server._id}
+                                            onClick={() => setBoostingServerId(server._id)}
+                                            style={{
+                                                padding: '12px 16px',
+                                                borderRadius: 8,
+                                                background: boostingServerId === server._id ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255,255,255,0.05)',
+                                                border: `1px solid ${boostingServerId === server._id ? '#a855f7' : 'transparent'}`,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 12,
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            <div style={{ width: 40, height: 40, borderRadius: 20, background: '#1e1b4b', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                                                {server.icon_url ? <img src={server.icon_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: '#a855f7', fontWeight: 'bold' }}>{server.name.charAt(0)}</span>}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ color: '#fff', fontWeight: '500', fontSize: 14, marginBottom: 2 }}>{server.name}</div>
+                                                <div style={{ color: '#fbbf24', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <Sparkles size={10} />
+                                                    Level {server.boost_level || 0}
+                                                </div>
+                                            </div>
+                                            {boostingServerId === server._id && <Check size={18} color="#a855f7" />}
+                                        </div>
+                                    ))
+                                )
+                            )}
+                        </div>
+
+                        {shards < 1000 ? (
+                            <div style={{ textAlign: 'center', color: '#ef4444', fontSize: 13, marginBottom: 12 }}>
+                                Not enough Shards. You need 1000 Shards to boost a server.
+                            </div>
+                        ) : null}
+
+                        <button
+                            disabled={!boostingServerId || boosting || shards < 1000}
+                            onClick={handleBuyBoost}
+                            style={{
+                                ...shopStyles.buyBtn,
+                                opacity: (!boostingServerId || boosting || shards < 1000) ? 0.5 : 1,
+                                padding: '14px',
+                                fontSize: 15
+                            }}
+                        >
+                            {boosting ? 'Boosting...' : `Confirm Purchase (1000 Shards)`}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div >,
         document.body
     );

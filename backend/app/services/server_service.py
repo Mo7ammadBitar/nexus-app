@@ -45,6 +45,8 @@ class ServerService:
         server_doc = {
             "name": name,
             "icon_url": None,
+            "banner_url": None,
+            "boost_level": 0,
             "owner_id": owner_id,
             "invite_code": invite_code,
             "is_banned": False,

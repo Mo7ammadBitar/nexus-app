@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Edit2, Check, Copy, Crown, Shield, User, Lightbulb, Trash2 } from 'lucide-react';
+import { X, Edit2, Check, Copy, Crown, Shield, User, Lightbulb, Trash2, Camera, Lock, Image, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useServerStore } from '../../store/serverStore';
 import { serversAPI } from '../../services/api';
@@ -13,11 +13,16 @@ const ServerSettings = ({ onClose }) => {
     const [newName, setNewName] = useState(currentServer?.name || '');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [uploadingIcon, setUploadingIcon] = useState(false);
+    const [uploadingBanner, setUploadingBanner] = useState(false);
+    const iconInputRef = useRef(null);
+    const bannerInputRef = useRef(null);
 
     const myRole = currentServer?.my_role;
     const isOwner = myRole === 'owner';
     const isModerator = myRole === 'moderator';
     const canViewInvite = isOwner || isModerator;
+    const boostLevel = currentServer?.boost_level || 0;
 
     const handleCopyInvite = () => {
         if (currentServer?.invite_code) {
@@ -55,6 +60,40 @@ const ServerSettings = ({ onClose }) => {
                 setError(err.response?.data?.detail || t('server.err_delete_server', 'Failed to delete server'));
             }
         }
+    };
+
+    const handleIconUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploadingIcon(true);
+        setError('');
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            await serversAPI.uploadIcon(currentServer._id, formData);
+            await fetchServers();
+            await selectServer(currentServer._id);
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Failed to upload icon');
+        }
+        setUploadingIcon(false);
+    };
+
+    const handleBannerUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploadingBanner(true);
+        setError('');
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            await serversAPI.uploadBanner(currentServer._id, formData);
+            await fetchServers();
+            await selectServer(currentServer._id);
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Failed to upload banner');
+        }
+        setUploadingBanner(false);
     };
 
     if (!currentServer || !canViewInvite) return null;
@@ -107,6 +146,99 @@ const ServerSettings = ({ onClose }) => {
                         </span>
                     </div>
                 </div>
+
+                {/* Server Icon Upload (Free — Owner) */}
+                {isOwner && (
+                    <div style={styles.section}>
+                        <h3 style={styles.sectionTitle}>
+                            <Camera size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                            Server Icon
+                        </h3>
+                        <p style={styles.description}>Upload a custom icon for your server. It will replace the default initials in the sidebar.</p>
+                        <div style={styles.iconUploadArea}>
+                            <div
+                                style={styles.iconPreview}
+                                onClick={() => iconInputRef.current?.click()}
+                            >
+                                {currentServer.icon_url ? (
+                                    <img src={currentServer.icon_url} alt="" style={styles.iconImg} />
+                                ) : (
+                                    <span style={styles.iconInitial}>{currentServer.name?.charAt(0).toUpperCase()}</span>
+                                )}
+                                <div style={styles.iconOverlay}>
+                                    <Camera size={20} color="#fff" />
+                                </div>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <button
+                                    style={styles.uploadBtn}
+                                    onClick={() => iconInputRef.current?.click()}
+                                    disabled={uploadingIcon}
+                                >
+                                    <Upload size={14} style={{ marginRight: 6 }} />
+                                    {uploadingIcon ? 'Uploading...' : 'Change Icon'}
+                                </button>
+                                <p style={styles.uploadHint}>JPG, PNG, GIF or WebP. Recommended 256x256.</p>
+                            </div>
+                        </div>
+                        <input
+                            ref={iconInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            style={{ display: 'none' }}
+                            onChange={handleIconUpload}
+                        />
+                    </div>
+                )}
+
+                {/* Server Banner Upload (Premium — boost_level >= 1) */}
+                {isOwner && (
+                    <div style={styles.section}>
+                        <h3 style={styles.sectionTitle}>
+                            <Image size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                            Server Banner
+                        </h3>
+                        {boostLevel >= 1 ? (
+                            <>
+                                <p style={styles.description}>Upload a banner that displays at the top of your server's chat.</p>
+                                <div
+                                    style={styles.bannerUploadZone}
+                                    onClick={() => bannerInputRef.current?.click()}
+                                >
+                                    {currentServer.banner_url ? (
+                                        <img src={currentServer.banner_url} alt="" style={styles.bannerImg} />
+                                    ) : (
+                                        <div style={styles.bannerPlaceholder}>
+                                            <Upload size={28} color="#a855f7" />
+                                            <span style={{ color: '#a855f7', fontSize: 13, marginTop: 8 }}>Click to upload banner</span>
+                                        </div>
+                                    )}
+                                    {uploadingBanner && (
+                                        <div style={styles.bannerUploading}>Uploading...</div>
+                                    )}
+                                </div>
+                                <p style={styles.uploadHint}>Recommended 960x540. JPG, PNG, GIF or WebP.</p>
+                                <input
+                                    ref={bannerInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                    style={{ display: 'none' }}
+                                    onChange={handleBannerUpload}
+                                />
+                            </>
+                        ) : (
+                            <div style={styles.lockedBanner}>
+                                <Lock size={22} color="#6b7280" />
+                                <div style={{ flex: 1 }}>
+                                    <p style={styles.lockedTitle}>Boost Required</p>
+                                    <p style={styles.lockedDesc}>
+                                        Reach Boost Level 1 to unlock Custom Banners. Buy a boost in the Ethereal Shop!
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div style={styles.section}>
                     <h3 style={styles.sectionTitle}>{t('server.gate_key', 'Invite Code')}</h3>
@@ -175,9 +307,9 @@ const styles = {
     modal: {
         backgroundColor: 'var(--bg-secondary)',
         borderRadius: '16px',
-        width: '480px',
+        width: '520px',
         maxWidth: '90vw',
-        maxHeight: '80vh',
+        maxHeight: '85vh',
         overflow: 'auto',
     },
     header: {
@@ -218,6 +350,8 @@ const styles = {
         textTransform: 'uppercase',
         letterSpacing: '0.5px',
         margin: '0 0 12px 0',
+        display: 'flex',
+        alignItems: 'center',
     },
     description: {
         color: '#6b7280',
@@ -285,6 +419,127 @@ const styles = {
         fontSize: '14px',
         fontWeight: '500',
     },
+    // ---- Icon Upload ----
+    iconUploadArea: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '20px',
+    },
+    iconPreview: {
+        width: 72,
+        height: 72,
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
+        border: '2px solid rgba(168, 85, 247, 0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        position: 'relative',
+        overflow: 'hidden',
+        flexShrink: 0,
+        transition: 'border-color 0.3s ease',
+    },
+    iconImg: {
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        borderRadius: '50%',
+    },
+    iconInitial: {
+        color: '#a78bfa',
+        fontSize: '28px',
+        fontWeight: '700',
+    },
+    iconOverlay: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: 0,
+        transition: 'opacity 0.2s ease',
+        borderRadius: '50%',
+    },
+    uploadBtn: {
+        display: 'flex',
+        alignItems: 'center',
+        padding: '10px 18px',
+        background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+        border: 'none',
+        borderRadius: '8px',
+        color: '#fff',
+        fontSize: '13px',
+        fontWeight: '600',
+        cursor: 'pointer',
+        marginBottom: '6px',
+    },
+    uploadHint: {
+        color: '#4b5563',
+        fontSize: '12px',
+        margin: 0,
+    },
+    // ---- Banner Upload ----
+    bannerUploadZone: {
+        width: '100%',
+        height: 140,
+        borderRadius: '12px',
+        border: '2px dashed rgba(168, 85, 247, 0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        overflow: 'hidden',
+        position: 'relative',
+        background: 'linear-gradient(135deg, rgba(30, 27, 75, 0.4), rgba(49, 46, 129, 0.2))',
+        transition: 'border-color 0.3s ease',
+        marginBottom: 8,
+    },
+    bannerImg: {
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+    },
+    bannerPlaceholder: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    bannerUploading: {
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#a855f7',
+        fontSize: '14px',
+        fontWeight: '600',
+    },
+    lockedBanner: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '14px',
+        padding: '18px 16px',
+        background: 'rgba(107, 114, 128, 0.08)',
+        borderRadius: '12px',
+        border: '1px solid rgba(107, 114, 128, 0.15)',
+    },
+    lockedTitle: {
+        color: '#9ca3af',
+        fontSize: '14px',
+        fontWeight: '600',
+        margin: '0 0 4px 0',
+    },
+    lockedDesc: {
+        color: '#6b7280',
+        fontSize: '13px',
+        margin: 0,
+        lineHeight: '1.4',
+    },
+    // ---- Invite / Tip / etc ----
     inviteContainer: {
         display: 'flex',
         alignItems: 'center',
@@ -354,3 +609,4 @@ const styles = {
 };
 
 export default ServerSettings;
+

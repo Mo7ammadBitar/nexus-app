@@ -757,8 +757,32 @@ const ChatArea = () => {
                 }
             `}</style>
             {/* Header */}
-            <div style={StyleSheet.flatten(styles.header)}>
-                <div style={StyleSheet.flatten(styles.headerLeft)}>
+            <div style={{
+                ...StyleSheet.flatten(styles.header), 
+                position: 'relative', 
+                overflow: 'hidden',
+                backgroundColor: currentServer?.banner_url ? 'transparent' : 'var(--bg-primary)'
+            }}>
+                {currentServer?.banner_url && (
+                    <>
+                        <div style={{
+                            position: 'absolute',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            backgroundImage: `url(${resolveAssetUrl(currentServer.banner_url)})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            zIndex: 0
+                        }} />
+                        <div style={{
+                            position: 'absolute',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'linear-gradient(to right, rgba(13, 13, 31, 0.95), rgba(13, 13, 31, 0.6) 40%, rgba(13, 13, 31, 0.4) 60%, rgba(13, 13, 31, 0.85))',
+                            zIndex: 0
+                        }} />
+                    </>
+                )}
+
+                <div style={{ ...StyleSheet.flatten(styles.headerLeft), position: 'relative', zIndex: 1 }}>
                     {isMobile && (
                         <TouchableOpacity onPress={() => setMobileView('nav')}>
                             <ArrowLeft size={24} color="#b4b4b4" style={{ marginInlineEnd: 12 }} />
@@ -766,19 +790,19 @@ const ChatArea = () => {
                     )}
                     <Hash size={24} color="#9ca3af" style={{ marginInlineEnd: 8 }} />
                     <View>
-                        <Text style={styles.headerTitle}>{currentChannel.name}</Text>
+                        <Text style={{ ...StyleSheet.flatten(styles.headerTitle), textShadow: currentServer?.banner_url ? '0 2px 4px rgba(0,0,0,0.8)' : 'none' }}>{currentChannel.name}</Text>
                         {currentChannel.topic && (
-                            <Text style={styles.headerTopic}>{currentChannel.topic}</Text>
+                            <Text style={{ ...StyleSheet.flatten(styles.headerTopic), textShadow: currentServer?.banner_url ? '0 1px 3px rgba(0,0,0,0.8)' : 'none' }}>{currentChannel.topic}</Text>
                         )}
                     </View>
                 </div>
-                <div style={StyleSheet.flatten(styles.headerIcons)}>
+                <div style={{ ...StyleSheet.flatten(styles.headerIcons), position: 'relative', zIndex: 1 }}>
                     <TouchableOpacity
                         style={[styles.headerIconButton, showPinnedPanel && styles.headerIconButtonActive]}
                         onPress={() => setShowPinnedPanel(!showPinnedPanel)}
                         title="Anchored Truths"
                     >
-                        <Pin size={24} color={showPinnedPanel ? "#fff" : "#b9bbbe"} />
+                        <Pin size={24} color={showPinnedPanel ? "#fff" : "#b9bbbe"} style={currentServer?.banner_url ? { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' } : {}} />
                     </TouchableOpacity>
                 </div>
             </div>
