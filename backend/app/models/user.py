@@ -134,6 +134,7 @@ class UserResponse(BaseModel):
     
     # Economy
     aether_shards: Optional[int] = 0
+    available_server_boosts: int = 0
     equipped_relics: Optional[dict] = {}
     
     class Config:
@@ -175,6 +176,7 @@ class UserInDB(BaseModel):
     
     # Economy
     aether_shards: Optional[int] = 0
+    available_server_boosts: int = 0
     owned_relics: Optional[List[str]] = []
     equipped_relics: Optional[dict] = {}  # {"frame": "relic_id", "bubble": "relic_id"}
     

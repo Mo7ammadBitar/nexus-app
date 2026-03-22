@@ -12,8 +12,11 @@ from app.middleware.rbac import is_premium_user
 from app.services.auth_service import AuthService
 from app.schemas.user import ProfileUpdateRequest, UserSearchResult
 from app.config import get_settings
-from app.database import get_users_collection
+from app.database import get_users_collection, get_servers_collection
 from app.socket_instance import sio
+from pydantic import BaseModel
+from bson import ObjectId
+from datetime import datetime
 
 settings = get_settings()
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -320,3 +323,61 @@ async def update_status(
         "status": status_value
     }
 
+
+class ApplyBoostRequest(BaseModel):
+    server_id: str
+
+
+@router.post("/me/apply-boost")
+async def apply_server_boost(
+    request: ApplyBoostRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Apply a server boost from inventory to a target server."""
+    # Verify user has a boost
+    available_boosts = current_user.get("available_server_boosts", 0)
+    if available_boosts <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No Server Boosts available in your inventory."
+        )
+        
+    try:
+        server_obj_id = ObjectId(request.server_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid server ID")
+
+    # Verify server exists
+    servers = get_servers_collection()
+    server = await servers.find_one({"_id": server_obj_id})
+    if not server:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Server not found"
+        )
+        
+    # Deduct boost from user
+    users = get_users_collection()
+    await users.update_one(
+        {"_id": ObjectId(current_user["_id"])},
+        {"$inc": {"available_server_boosts": -1}}
+    )
+    
+    # Increment server boost_level
+    from pymongo import ReturnDocument
+    updated_server = await servers.find_one_and_update(
+        {"_id": server_obj_id},
+        {"$inc": {"boost_level": 1}, "$set": {"updated_at": datetime.utcnow()}},
+        return_document=ReturnDocument.AFTER
+    )
+    
+    # Check if motor returned dictionary or object (depending on version, motor acts like pymongo)
+    # Actually Motor parses return_document=True/ReturnDocument.AFTER correctly depending on motor version.
+    # To be safe:
+    new_boost_level = updated_server.get("boost_level", server.get("boost_level", 0) + 1) if updated_server else server.get("boost_level", 0) + 1
+    
+    return {
+        "message": f"Server Boost Applied! {server['name']} is now Level {new_boost_level}.",
+        "available_server_boosts": available_boosts - 1,
+        "boost_level": new_boost_level
+    }

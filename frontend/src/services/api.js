@@ -88,6 +88,7 @@ export const usersAPI = {
     searchUsers: (username) => api.get(`/users/search?username=${username}`),
     getUser: (userId) => api.get(`/users/${userId}`),
     updateStatus: (status) => api.put(`/users/status?status_value=${status}`),
+    applyServerBoost: (serverId) => api.post('/users/me/apply-boost', { server_id: serverId }),
 };
 
 // Servers API
@@ -258,7 +259,7 @@ export const shopAPI = {
     equipRelic: (relicId) => api.post(`/shop/equip/${relicId}`),
     unequipRelic: (slot) => api.post(`/shop/unequip/${slot}`),
     getInventory: () => api.get('/shop/inventory'),
-    buyServerBoost: (serverId) => api.post('/shop/buy-server-boost', { server_id: serverId }),
+    buyServerBoost: () => api.post('/shop/buy-server-boost'),
 };
 
 // The Oracle - System Bot

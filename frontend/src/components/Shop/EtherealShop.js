@@ -53,10 +53,9 @@ const EtherealShop = ({ isOpen, onClose }) => {
     }, [isOpen]);
 
     const handleBuyBoost = async () => {
-        if (!boostingServerId) return;
         setBoosting(true);
         try {
-            const response = await shopAPI.buyServerBoost(boostingServerId);
+            const response = await shopAPI.buyServerBoost();
             showNotification(
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Rocket size={16} color="#a855f7" />
@@ -570,66 +569,34 @@ const EtherealShop = ({ isOpen, onClose }) => {
                         </div>
 
                         <p style={{ color: '#aaa', fontSize: 14, marginBottom: 20, lineHeight: 1.5 }}>
-                            Select a server to bestow a permanent level 1 Boost. This will unlock the ability to set a <strong>Custom Server Banner</strong> for that server.
+                            Purchase a level 1 Server Boost for your Inventory. You can apply it to any server you are a member of from your Profile Settings.
                         </p>
 
-                        <div style={{ maxHeight: 280, overflowY: 'auto', marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
-                            {servers.length === 0 ? (
-                                <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px 0' }}>You are not in any servers.</p>
-                            ) : (
-                                servers.filter(s => s.my_role === 'owner').length === 0 ? (
-                                    <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px 0' }}>You are not the Prime (owner) of any servers. Only owners can utilize a Server Boost.</p>
-                                ) : (
-                                    servers.filter(s => s.my_role === 'owner').map(server => (
-                                        <div
-                                            key={server._id}
-                                            onClick={() => setBoostingServerId(server._id)}
-                                            style={{
-                                                padding: '12px 16px',
-                                                borderRadius: 8,
-                                                background: boostingServerId === server._id ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255,255,255,0.05)',
-                                                border: `1px solid ${boostingServerId === server._id ? '#a855f7' : 'transparent'}`,
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 12,
-                                                transition: 'all 0.2s'
-                                            }}
-                                        >
-                                            <div style={{ width: 40, height: 40, borderRadius: 20, background: '#1e1b4b', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-                                                {server.icon_url ? <img src={server.icon_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: '#a855f7', fontWeight: 'bold' }}>{server.name.charAt(0)}</span>}
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ color: '#fff', fontWeight: '500', fontSize: 14, marginBottom: 2 }}>{server.name}</div>
-                                                <div style={{ color: '#fbbf24', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                    <Sparkles size={10} />
-                                                    Level {server.boost_level || 0}
-                                                </div>
-                                            </div>
-                                            {boostingServerId === server._id && <Check size={18} color="#a855f7" />}
-                                        </div>
-                                    ))
-                                )
-                            )}
+                        <div style={{ padding: '20px', background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 12, marginBottom: 24, textAlign: 'center' }}>
+                            <div style={{ width: 64, height: 64, borderRadius: 32, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                                <Rocket size={32} color="#a855f7" style={{ filter: 'drop-shadow(0 0 10px #a855f7)' }} />
+                            </div>
+                            <h4 style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', margin: '0 0 8px' }}>Server Boost x1</h4>
+                            <p style={{ color: '#aaa', fontSize: 14, margin: 0 }}>Unlocks Custom Server Banners</p>
                         </div>
 
                         {shards < 1000 ? (
                             <div style={{ textAlign: 'center', color: '#ef4444', fontSize: 13, marginBottom: 12 }}>
-                                Not enough Shards. You need 1000 Shards to boost a server.
+                                Not enough Shards. You need 1000 Shards to purchase a Server Boost.
                             </div>
                         ) : null}
 
                         <button
-                            disabled={!boostingServerId || boosting || shards < 1000}
+                            disabled={boosting || shards < 1000}
                             onClick={handleBuyBoost}
                             style={{
                                 ...shopStyles.buyBtn,
-                                opacity: (!boostingServerId || boosting || shards < 1000) ? 0.5 : 1,
+                                opacity: (boosting || shards < 1000) ? 0.5 : 1,
                                 padding: '14px',
                                 fontSize: 15
                             }}
                         >
-                            {boosting ? 'Boosting...' : `Confirm Purchase (1000 Shards)`}
+                            {boosting ? 'Purchasing...' : `Confirm Purchase (1000 Shards)`}
                         </button>
                     </div>
                 </div>

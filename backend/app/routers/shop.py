@@ -317,17 +317,11 @@ async def get_inventory(current_user: dict = Depends(get_current_user)):
 BOOST_COST = 1000  # Aether Shards
 
 
-class ServerBoostRequest(BaseModel):
-    """Buy a server boost"""
-    server_id: str
-
-
 @router.post("/buy-server-boost")
 async def buy_server_boost(
-    request: ServerBoostRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """Purchase a permanent Server Boost for 1000 Aether Shards."""
+    """Purchase a permanent Server Boost for 1000 Aether Shards. Adds to user inventory."""
     # Check shard balance
     current_shards = current_user.get("aether_shards", 0) or 0
     if current_shards < BOOST_COST:
@@ -336,37 +330,22 @@ async def buy_server_boost(
             detail=f"Insufficient Aether Shards. Need {BOOST_COST}, have {current_shards}."
         )
 
-    # Verify server exists
-    servers = get_servers_collection()
-    server = await servers.find_one({"_id": ObjectId(request.server_id)})
-    if not server:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Server not found"
-        )
-
-    # Deduct shards from user
+    # Deduct shards from user and increment available_server_boosts
     new_balance = current_shards - BOOST_COST
+    new_boosts = current_user.get("available_server_boosts", 0) + 1
+    
     users = get_users_collection()
     await users.update_one(
         {"_id": ObjectId(current_user["_id"])},
-        {"$set": {"aether_shards": new_balance, "updated_at": datetime.utcnow()}}
-    )
-
-    # Increment server boost level
-    updated_server = await servers.find_one_and_update(
-        {"_id": ObjectId(request.server_id)},
         {
-            "$inc": {"boost_level": 1},
-            "$set": {"updated_at": datetime.utcnow()},
-        },
-        return_document=True
+            "$set": {"aether_shards": new_balance, "updated_at": datetime.utcnow()},
+            "$inc": {"available_server_boosts": 1}
+        }
     )
 
     return {
-        "message": f"Server boosted! {server['name']} is now Boost Level {updated_server['boost_level']}!",
+        "message": f"Server Boost Purchased! You now have {new_boosts} Boost(s) in your Inventory.",
         "new_balance": new_balance,
-        "boost_level": updated_server["boost_level"],
-        "server_id": request.server_id,
+        "available_server_boosts": new_boosts
     }
 
