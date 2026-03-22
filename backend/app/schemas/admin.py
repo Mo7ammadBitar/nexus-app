@@ -75,3 +75,9 @@ class AdminServerResponse(BaseModel):
     ban_reason: Optional[str]
     ban_expires_at: Optional[datetime]
     created_at: datetime
+
+
+class GrantPremiumRequest(BaseModel):
+    """Grant premium subscription to a user"""
+    plan: str = Field(..., pattern=r'^(monthly|yearly|lifetime)$')
+

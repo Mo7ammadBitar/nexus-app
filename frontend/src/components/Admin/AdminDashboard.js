@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native-web';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
-import { Crown, Shield, Users, Server, X, UserPlus, FileEdit, Trash2, Ban, CheckCircle } from 'lucide-react';
+import { Crown, Shield, Users, Server, X, UserPlus, FileEdit, Trash2, Ban, CheckCircle, Gift, ShieldOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const AdminDashboard = ({ onClose }) => {
@@ -40,6 +40,10 @@ const AdminDashboard = ({ onClose }) => {
     const [editServerDialog, setEditServerDialog] = useState(null);
     const [editDisplayName, setEditDisplayName] = useState('');
     const [editServerName, setEditServerName] = useState('');
+
+    // Premium Management
+    const [premiumDialog, setPremiumDialog] = useState(null);
+    const [premiumPlan, setPremiumPlan] = useState('lifetime');
 
     useEffect(() => {
         if (activeTab === 'users') fetchUsers();
@@ -272,6 +276,44 @@ const AdminDashboard = ({ onClose }) => {
         }
     };
 
+    // ===== Premium Management Handlers =====
+    const openPremiumDialog = (user) => {
+        setPremiumDialog(user);
+        setPremiumPlan('lifetime');
+    };
+
+    const closePremiumDialog = () => {
+        setPremiumDialog(null);
+        setPremiumPlan('lifetime');
+    };
+
+    const handleGrantPremium = async () => {
+        if (!premiumDialog) return;
+        try {
+            const res = await api.post(`/admin/users/${premiumDialog.id || premiumDialog._id}/grant-premium`, {
+                plan: premiumPlan,
+            });
+            closePremiumDialog();
+            fetchUsers();
+            setMessage(`✅ ${res.data.message}`);
+        } catch (error) {
+            setMessage('❌ ' + (error.response?.data?.detail || 'Failed to grant premium'));
+        }
+    };
+
+    const handleRevokePremium = async () => {
+        if (!premiumDialog) return;
+        if (!window.confirm(`Revoke premium from ${premiumDialog.username}?`)) return;
+        try {
+            const res = await api.post(`/admin/users/${premiumDialog.id || premiumDialog._id}/revoke-premium`);
+            closePremiumDialog();
+            fetchUsers();
+            setMessage(`✅ ${res.data.message}`);
+        } catch (error) {
+            setMessage('❌ ' + (error.response?.data?.detail || 'Failed to revoke premium'));
+        }
+    };
+
     return (
         <div style={inlineStyles.overlay}>
             <div style={inlineStyles.panel}>
@@ -378,6 +420,9 @@ const AdminDashboard = ({ onClose }) => {
                                                         {u.is_banned && (
                                                             <span style={inlineStyles.bannedBadge}>{t('admin.badge_banned', 'BANNED')}</span>
                                                         )}
+                                                        {u.is_premium && (
+                                                            <span style={inlineStyles.premiumBadge}>ELITE</span>
+                                                        )}
                                                     </div>
                                                     <div style={inlineStyles.actionButtons}>
                                                         {isAdmin && (
@@ -399,6 +444,12 @@ const AdminDashboard = ({ onClose }) => {
                                                                     onClick={() => handleDeleteUser(u.id || u._id)}
                                                                 >
                                                                     <Trash2 size={14} /> {t('common.delete', 'Delete')}
+                                                                </button>
+                                                                <button
+                                                                    style={{ ...inlineStyles.premiumManageBtn, display: 'flex', alignItems: 'center', gap: 4 }}
+                                                                    onClick={() => openPremiumDialog(u)}
+                                                                >
+                                                                    <Crown size={14} /> Premium
                                                                 </button>
                                                             </>
                                                         )}
@@ -637,6 +688,85 @@ const AdminDashboard = ({ onClose }) => {
                             </button>
                             <button style={inlineStyles.submitBtn} onClick={handleEditServer}>
                                 {t('common.save', 'Save')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Premium Management Dialog */}
+            {premiumDialog && (
+                <div style={inlineStyles.modalOverlay}>
+                    <div style={{ ...inlineStyles.modal, border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                        <h3 style={{ ...inlineStyles.modalTitle, display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Crown size={22} color="#f59e0b" /> Premium Management
+                        </h3>
+                        <div style={{ 
+                            padding: '16px', 
+                            backgroundColor: 'rgba(245, 158, 11, 0.08)', 
+                            borderRadius: '10px', 
+                            marginBottom: '20px',
+                            border: '1px solid rgba(245, 158, 11, 0.15)'
+                        }}>
+                            <div style={{ color: '#fff', fontSize: '15px', fontWeight: '600', marginBottom: 4 }}>
+                                {premiumDialog.display_name || premiumDialog.username}
+                            </div>
+                            <div style={{ color: '#9ca3af', fontSize: '13px' }}>
+                                @{premiumDialog.username} &middot; {premiumDialog.email}
+                            </div>
+                            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ 
+                                    color: premiumDialog.is_premium ? '#f59e0b' : '#6b7280', 
+                                    fontSize: '12px', 
+                                    fontWeight: '600',
+                                    padding: '3px 10px',
+                                    borderRadius: '999px',
+                                    background: premiumDialog.is_premium ? 'rgba(245, 158, 11, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                                    border: premiumDialog.is_premium ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(107, 114, 128, 0.2)'
+                                }}>
+                                    {premiumDialog.is_premium ? 'ELITE MEMBER' : 'FREE TIER'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Plan Selector */}
+                        <label style={{ ...inlineStyles.label, marginBottom: 10 }}>Select Plan Duration</label>
+                        <select
+                            value={premiumPlan}
+                            onChange={e => setPremiumPlan(e.target.value)}
+                            style={{
+                                ...inlineStyles.input,
+                                cursor: 'pointer',
+                                appearance: 'auto',
+                                marginBottom: '24px',
+                            }}
+                        >
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                            <option value="lifetime">Lifetime (Forever)</option>
+                        </select>
+
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', gap: '12px', flexDirection: 'column' }}>
+                            <button
+                                style={inlineStyles.grantPremiumBtn}
+                                onClick={handleGrantPremium}
+                            >
+                                <Gift size={18} style={{ marginRight: 8 }} /> Grant Premium
+                            </button>
+                            {premiumDialog.is_premium && (
+                                <button
+                                    style={inlineStyles.revokePremiumBtn}
+                                    onClick={handleRevokePremium}
+                                >
+                                    <ShieldOff size={18} style={{ marginRight: 8 }} /> Revoke Premium
+                                </button>
+                            )}
+                        </div>
+
+                        <div style={{ ...inlineStyles.modalActions, marginTop: 16 }}>
+                            <button style={inlineStyles.cancelBtn} onClick={closePremiumDialog}>
+                                Close
                             </button>
                         </div>
                     </div>
@@ -921,6 +1051,59 @@ const inlineStyles = {
         color: '#fff',
         fontSize: '14px',
         cursor: 'pointer',
+    },
+    // Premium Management Styles
+    premiumBadge: {
+        color: '#f59e0b',
+        fontSize: '11px',
+        fontWeight: '700',
+        padding: '2px 8px',
+        borderRadius: '999px',
+        background: 'rgba(245, 158, 11, 0.15)',
+        border: '1px solid rgba(245, 158, 11, 0.3)',
+        letterSpacing: '0.5px',
+    },
+    premiumManageBtn: {
+        padding: '8px 16px',
+        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(234, 179, 8, 0.15))',
+        border: '1px solid rgba(245, 158, 11, 0.3)',
+        borderRadius: '6px',
+        color: '#f59e0b',
+        cursor: 'pointer',
+        fontSize: '13px',
+        fontWeight: '500',
+    },
+    grantPremiumBtn: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '14px 24px',
+        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)',
+        border: 'none',
+        borderRadius: '10px',
+        color: '#fff',
+        fontSize: '15px',
+        fontWeight: '700',
+        cursor: 'pointer',
+        letterSpacing: '0.5px',
+        boxShadow: '0 4px 20px rgba(245, 158, 11, 0.3)',
+        transition: 'all 0.3s ease',
+    },
+    revokePremiumBtn: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '14px 24px',
+        background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%)',
+        border: 'none',
+        borderRadius: '10px',
+        color: '#fff',
+        fontSize: '15px',
+        fontWeight: '700',
+        cursor: 'pointer',
+        letterSpacing: '0.5px',
+        boxShadow: '0 4px 20px rgba(220, 38, 38, 0.3)',
+        transition: 'all 0.3s ease',
     },
 };
 

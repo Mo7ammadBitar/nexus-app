@@ -15,7 +15,7 @@ import VoiceChannel from './VoiceChannel';
 import MemberProfile from '../Profile/MemberProfile';
 import IncomingCallModal from './IncomingCallModal';
 import { generateMessageLink, copyToClipboard } from '../../utils/messageLinkUtils';
-import { Smile, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Pin, Bell, Users, Hash, Sparkles, Eye, X, ArrowLeft } from 'lucide-react';
+import { Smile, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Pin, Bell, Users, Hash, Sparkles, Eye, X, ArrowLeft, Timer, VolumeX } from 'lucide-react';
 import {
     getAuraRingStyle,
     getAuraNameStyle,
@@ -193,7 +193,10 @@ const ChatArea = () => {
 
         const updateTimeRemaining = () => {
             const now = new Date();
-            const expiresAt = new Date(muteExpiresAt);
+            // Fix UTC parsing: backend sends naive UTC timestamps without 'Z' suffix,
+            // so JS parses them as local time. Append 'Z' to force UTC interpretation.
+            const rawTs = String(muteExpiresAt);
+            const expiresAt = new Date(rawTs.endsWith('Z') || rawTs.includes('+') ? rawTs : rawTs + 'Z');
             const diffMs = expiresAt - now;
 
             if (diffMs <= 0) {
@@ -1130,7 +1133,7 @@ const ChatArea = () => {
                 isMuted ? (
                     <View style={styles.mutedContainer}>
                         <View style={styles.mutedIcon}>
-                            <Text style={styles.mutedIconText}>🔇</Text>
+                            <VolumeX size={22} color="#ef4444" />
                         </View>
                         <View style={styles.mutedInfo}>
                             <Text style={styles.mutedTitle}>{t('chat.muted_title', 'You have been muted')}</Text>
@@ -1138,7 +1141,10 @@ const ChatArea = () => {
                                 {t('chat.muted_reason', 'Reason: {{reason}}', { reason: muteReason || t('chat.no_reason', 'No reason provided') })}
                             </Text>
                             {muteTimeRemaining && (
-                                <Text style={styles.mutedDuration}>⏱️ {muteTimeRemaining}</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                    <Timer size={14} color="#f87171" style={{ marginRight: 6 }} />
+                                    <Text style={styles.mutedDuration}>{muteTimeRemaining}</Text>
+                                </View>
                             )}
                         </View>
                     </View>

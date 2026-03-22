@@ -17,9 +17,11 @@ from app.schemas.admin import (
     UpdateUserRequest,
     UpdateAdminRequest,
     UpdateServerAdminRequest,
+    GrantPremiumRequest,
 )
 from app.models.user import UserCreate, UserRole
 from app.database import get_users_collection, get_servers_collection
+from datetime import datetime
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -402,6 +404,96 @@ async def delete_user(
     else:
         await AuthService.soft_delete_user(user_id)
         return {"message": "User deleted (soft)", "user_id": user_id}
+
+
+# ============ Premium Management (Admin + Super Admin) ============
+
+@router.post("/users/{user_id}/grant-premium")
+async def grant_premium(
+    user_id: str,
+    request: GrantPremiumRequest,
+    current_user: dict = Depends(can_manage_users)
+):
+    """
+    Grant Nexus Prime premium to a user.
+    Supports: monthly, yearly, lifetime.
+    Admin and Super Admin.
+    """
+    user = await AuthService.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    users = get_users_collection()
+    now = datetime.utcnow()
+
+    result = await users.find_one_and_update(
+        {"_id": ObjectId(user_id)},
+        {
+            "$set": {
+                "is_premium": True,
+                "premium_plan": request.plan,
+                "subscribed_at": now,
+                "updated_at": now,
+            }
+        },
+        return_document=True,
+    )
+
+    return {
+        "message": f"Premium ({request.plan}) granted to {user.get('username')}",
+        "user_id": user_id,
+        "is_premium": True,
+        "premium_plan": request.plan,
+        "subscribed_at": now.isoformat(),
+    }
+
+
+@router.post("/users/{user_id}/revoke-premium")
+async def revoke_premium(
+    user_id: str,
+    current_user: dict = Depends(can_manage_users)
+):
+    """
+    Revoke Nexus Prime premium from a user.
+    Admin and Super Admin.
+    """
+    user = await AuthService.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Prevent revoking premium from admins/super admins
+    if user.get("role") in [UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot revoke premium from Admin or Super Admin accounts"
+        )
+
+    users = get_users_collection()
+    now = datetime.utcnow()
+
+    await users.find_one_and_update(
+        {"_id": ObjectId(user_id)},
+        {
+            "$set": {
+                "is_premium": False,
+                "premium_plan": None,
+                "subscribed_at": None,
+                "updated_at": now,
+            }
+        },
+    )
+
+    return {
+        "message": f"Premium revoked from {user.get('username')}",
+        "user_id": user_id,
+        "is_premium": False,
+    }
 
 
 # ============ Server Management (Admin + Super Admin) ============
