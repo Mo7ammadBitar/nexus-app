@@ -18,7 +18,8 @@ const DMVoiceCall = lazy(() => import('../Chat/DMVoiceCall'));
 const MemberProfile = lazy(() => import('../Profile/MemberProfile'));
 import { copyToClipboard } from '../../utils/messageLinkUtils';
 import { initiateDMCall, cancelDMCall } from '../../services/socket';
-import { Smile, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Sparkles, Eye, X, Pin, Phone, PhoneOff, ArrowLeft } from 'lucide-react';
+import { Smile, SmilePlus, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Sparkles, Eye, X, Pin, Phone, PhoneOff, ArrowLeft } from 'lucide-react';
+import EmojiPicker from 'emoji-picker-react';
 import { getAuraRingStyle, getAuraNameStyle, injectAuraAnimations } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
 import { useTranslation } from 'react-i18next';
@@ -96,6 +97,26 @@ const DirectMessageArea = () => {
     const [editContent, setEditContent] = useState('');
     const [mobileActionMsg, setMobileActionMsg] = useState(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(null);
+    const [showInputEmojiPicker, setShowInputEmojiPicker] = useState(false);
+    
+    // Emoji picker refs
+    const emojiPickerRef = useRef(null);
+    const messageEmojiPickerRef = useRef(null);
+
+    // Click outside handler for Emoji Pickers
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+                setShowInputEmojiPicker(false);
+            }
+            if (messageEmojiPickerRef.current && !messageEmojiPickerRef.current.contains(event.target)) {
+                setShowEmojiPicker(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [highlightedMessageId, setHighlightedMessageId] = useState(null);
     const [searchParams, setSearchParams] = useSearchParams();
@@ -997,6 +1018,13 @@ const DirectMessageArea = () => {
                                                         <Share size={18} color="#b9bbbe" />
                                                     </TouchableOpacity>
                                                     <TouchableOpacity
+                                                        style={styles.actionIconBtn}
+                                                        onPress={() => setShowEmojiPicker(showEmojiPicker === msg._id ? null : msg._id)}
+                                                        title={t('dm.btn_add_reaction', 'Add reaction')}
+                                                    >
+                                                        <SmilePlus size={18} color="#b9bbbe" />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
                                                         style={[styles.actionIconBtn, copyLinkFeedback === msg._id && styles.copiedIconBtn]}
                                                         onPress={() => handleCopyLink(msg)}
                                                         title={copyLinkFeedback === msg._id ? t('dm.btn_copied', "Copied!") : t('dm.btn_copy_link', "Copy Essence")}
@@ -1069,17 +1097,16 @@ const DirectMessageArea = () => {
                                         {/* Emoji Picker */}
                                         {
                                             showEmojiPicker === msg._id && (
-                                                <View style={styles.emojiPicker}>
-                                                    {QUICK_EMOJIS.map(emoji => (
-                                                        <TouchableOpacity
-                                                            key={emoji}
-                                                            style={styles.emojiBtn}
-                                                            onPress={() => handleReaction(msg._id, emoji)}
-                                                        >
-                                                            <Text style={styles.emojiText}>{emoji}</Text>
-                                                        </TouchableOpacity>
-                                                    ))}
-                                                </View>
+                                                <div ref={messageEmojiPickerRef} style={{ position: 'absolute', right: 0, top: 40, zIndex: 1000 }}>
+                                                    <EmojiPicker 
+                                                        theme="dark" 
+                                                        onEmojiClick={(e) => { 
+                                                            console.log('Reacted with', e.emoji, 'on message', msg._id);
+                                                            handleReaction(msg._id, e.emoji); 
+                                                            setShowEmojiPicker(null); 
+                                                        }} 
+                                                    />
+                                                </div>
                                             )
                                         }
                                     </View>
@@ -1195,6 +1222,20 @@ const DirectMessageArea = () => {
                             onKeyPress={handleKeyPress}
                             multiline
                         />
+                        {/* Input Emoji Picker View */}
+                        {showInputEmojiPicker && (
+                            <div ref={emojiPickerRef} style={{ position: 'absolute', right: 60, bottom: 80, zIndex: 1000 }}>
+                                <EmojiPicker 
+                                    theme="dark" 
+                                    onEmojiClick={(e) => {
+                                        setMessage(prev => prev + e.emoji);
+                                    }} 
+                                />
+                            </div>
+                        )}
+                        <TouchableOpacity onPress={() => setShowInputEmojiPicker(prev => !prev)} style={{ marginHorizontal: 8, padding: 4, alignSelf: 'center', cursor: 'pointer' }}>
+                            <Smile className="text-gray-400 hover:text-white transition-colors cursor-pointer w-5 h-5" color="#b9bbbe" size={22} />
+                        </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.micBtn}
                             onPress={startRecording}

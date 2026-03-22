@@ -15,7 +15,8 @@ import VoiceChannel from './VoiceChannel';
 import MemberProfile from '../Profile/MemberProfile';
 import IncomingCallModal from './IncomingCallModal';
 import { generateMessageLink, copyToClipboard } from '../../utils/messageLinkUtils';
-import { Smile, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Pin, Bell, Users, Hash, Sparkles, Eye, X, ArrowLeft, Timer, VolumeX } from 'lucide-react';
+import { Smile, SmilePlus, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Pin, Bell, Users, Hash, Sparkles, Eye, X, ArrowLeft, Timer, VolumeX } from 'lucide-react';
+import EmojiPicker from 'emoji-picker-react';
 import {
     getAuraRingStyle,
     getAuraNameStyle,
@@ -107,6 +108,26 @@ const ChatArea = () => {
 
     // Reaction picker state
     const [showEmojiPicker, setShowEmojiPicker] = useState(null);
+    const [showInputEmojiPicker, setShowInputEmojiPicker] = useState(false);
+    
+    // Emoji picker refs
+    const emojiPickerRef = useRef(null);
+    const messageEmojiPickerRef = useRef(null);
+
+    // Click outside handler for Emoji Pickers
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+                setShowInputEmojiPicker(false);
+            }
+            if (messageEmojiPickerRef.current && !messageEmojiPickerRef.current.contains(event.target)) {
+                setShowEmojiPicker(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
     const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡', '🎉', '🔥'];
 
     // Starred messages state
@@ -1030,8 +1051,21 @@ const ChatArea = () => {
                                                 onPress={() => setShowEmojiPicker(showEmojiPicker === msg._id ? null : msg._id)}
                                                 title={t('chat.add_reaction', 'Add reaction')}
                                             >
-                                                <Smile size={18} color="#b9bbbe" />
+                                                <SmilePlus size={18} color="#b9bbbe" />
                                             </TouchableOpacity>
+                                            
+                                            {showEmojiPicker === msg._id && (
+                                                <div ref={messageEmojiPickerRef} style={{ position: 'absolute', right: 0, top: 35, zIndex: 1000 }}>
+                                                    <EmojiPicker 
+                                                        theme="dark" 
+                                                        onEmojiClick={(e) => { 
+                                                            console.log('Reacted with', e.emoji, 'on message', msg._id);
+                                                            handleReaction(msg._id, e.emoji); 
+                                                            setShowEmojiPicker(null); 
+                                                        }} 
+                                                    />
+                                                </div>
+                                            )}
                                             <TouchableOpacity
                                                 style={[styles.actionIconBtn, starredMessages.has(msg._id) && styles.starredIconBtn]}
                                                 onPress={() => handleStarMessage(msg._id)}
@@ -1287,6 +1321,20 @@ const ChatArea = () => {
                                     onKeyPress={handleKeyPress}
                                     multiline
                                 />
+                                {/* Input Emoji Picker View */}
+                                {showInputEmojiPicker && (
+                                    <div ref={emojiPickerRef} style={{ position: 'absolute', right: 60, bottom: 80, zIndex: 1000 }}>
+                                        <EmojiPicker 
+                                            theme="dark" 
+                                            onEmojiClick={(e) => {
+                                                setMessageText(prev => prev + e.emoji);
+                                            }} 
+                                        />
+                                    </div>
+                                )}
+                                <TouchableOpacity onPress={() => setShowInputEmojiPicker(prev => !prev)} style={{ marginHorizontal: 8, padding: 4, alignSelf: 'center', cursor: 'pointer' }}>
+                                    <Smile className="text-gray-400 hover:text-white transition-colors cursor-pointer w-5 h-5" color="#b9bbbe" size={22} />
+                                </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.micBtn}
                                     onPress={startRecording}
