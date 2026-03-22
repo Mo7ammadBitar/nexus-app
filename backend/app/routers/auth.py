@@ -152,6 +152,7 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
         "created_at": current_user.get("created_at"),
         # Economy
         "aether_shards": current_user.get("aether_shards", 0),
+        "available_server_boosts": current_user.get("available_server_boosts", 0),
         "owned_relics": current_user.get("owned_relics", []),
         "equipped_relics": current_user.get("equipped_relics", {}),
     }
