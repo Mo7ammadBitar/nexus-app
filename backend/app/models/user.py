@@ -2,27 +2,21 @@
 Pydantic Models for Users
 """
 from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, List
+from pydantic.functional_validators import BeforeValidator
+from typing import Optional, List, Annotated, Any
 from datetime import datetime
 from enum import Enum
 from bson import ObjectId
 
 
-class PyObjectId(str):
-    """Custom ObjectId type for Pydantic"""
-    
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-    
-    @classmethod
-    def validate(cls, v):
-        if isinstance(v, ObjectId):
-            return str(v)
-        if isinstance(v, str) and ObjectId.is_valid(v):
-            return v
-        raise ValueError("Invalid ObjectId")
+def validate_object_id(v: Any) -> str:
+    if isinstance(v, ObjectId):
+        return str(v)
+    if isinstance(v, str) and ObjectId.is_valid(v):
+        return v
+    raise ValueError("Invalid ObjectId")
 
+PyObjectId = Annotated[str, BeforeValidator(validate_object_id)]
 
 class UserRole(str, Enum):
     """Application-level user roles"""
