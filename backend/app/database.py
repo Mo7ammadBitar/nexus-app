@@ -71,6 +71,11 @@ class Database:
         # Starred messages collection indexes
         await cls.db.starred_messages.create_index([("user_id", 1), ("message_id", 1)], unique=True)
         await cls.db.starred_messages.create_index("user_id")
+
+        # Support Tickets collection indexes
+        await cls.db.tickets.create_index("user_id")
+        await cls.db.tickets.create_index("status")
+        await cls.db.ticket_messages.create_index("ticket_id")
         
         print("✅ Database indexes created")
 
@@ -125,3 +130,13 @@ def get_friends_collection():
 def get_starred_messages_collection():
     _check_db()
     return Database.db.starred_messages
+
+
+def get_tickets_collection():
+    _check_db()
+    return Database.db.tickets
+
+
+def get_ticket_messages_collection():
+    _check_db()
+    return Database.db.ticket_messages

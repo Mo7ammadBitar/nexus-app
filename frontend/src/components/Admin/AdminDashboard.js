@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native-web';
 import { useAuthStore } from '../../store/authStore';
-import api from '../../services/api';
-import { Crown, Shield, Users, Server, X, UserPlus, FileEdit, Trash2, Ban, CheckCircle, Gift, ShieldOff } from 'lucide-react';
+import api, { supportAPI } from '../../services/api';
+import { Crown, Shield, Users, Server, X, UserPlus, FileEdit, Trash2, Ban, CheckCircle, Gift, ShieldOff, MessageSquare, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import SupportChatModal from '../Support/SupportChatModal';
 
 const AdminDashboard = ({ onClose }) => {
     const { t } = useTranslation();
@@ -17,6 +18,10 @@ const AdminDashboard = ({ onClose }) => {
     const [admins, setAdmins] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState('');
+
+    // Support Tickets State
+    const [tickets, setTickets] = useState([]);
+    const [activeTicket, setActiveTicket] = useState(null);
 
     // Create User Form
     const [showCreateUser, setShowCreateUser] = useState(false);
@@ -49,6 +54,7 @@ const AdminDashboard = ({ onClose }) => {
         if (activeTab === 'users') fetchUsers();
         else if (activeTab === 'servers') fetchServers();
         else if (activeTab === 'admins' && isSuperAdmin) fetchAdmins();
+        else if (activeTab === 'support') fetchTickets();
     }, [activeTab]);
 
     const fetchUsers = async () => {
@@ -84,6 +90,29 @@ const AdminDashboard = ({ onClose }) => {
             setMessage('❌ ' + t('admin.failed_load_admins', 'Failed to load admins'));
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const fetchTickets = async () => {
+        setIsLoading(true);
+        try {
+            const response = await supportAPI.getAdminTickets();
+            setTickets(response.data || []);
+        } catch (error) {
+            setMessage('❌ Failed to load support tickets');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCloseTicketLocally = async (ticketId, e) => {
+        e.stopPropagation();
+        try {
+            await supportAPI.closeTicket(ticketId);
+            fetchTickets();
+            setMessage('✅ Ticket closed successfully');
+        } catch (error) {
+            setMessage('❌ Failed to close ticket');
         }
     };
 
@@ -346,6 +375,12 @@ const AdminDashboard = ({ onClose }) => {
                             <Shield size={16} /> {t('admin.tab_admins', 'Admins')}
                         </button>
                     )}
+                    <button
+                        style={{ ...inlineStyles.tab, ...(activeTab === 'support' ? inlineStyles.tabActive : {}), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                        onClick={() => setActiveTab('support')}
+                    >
+                        <MessageSquare size={16} /> Support Tickets
+                    </button>
                 </div>
 
                 {/* Message */}
@@ -575,10 +610,46 @@ const AdminDashboard = ({ onClose }) => {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Support Tickets Tab */}
+                            {activeTab === 'support' && (
+                                <div>
+                                    <h4 style={{ color: '#fff', fontSize: 16, marginBottom: 12 }}>Customer Support Tickets</h4>
+                                    <div style={inlineStyles.list}>
+                                        {tickets.length === 0 ? (
+                                            <div style={inlineStyles.empty}>No support tickets found</div>
+                                        ) : (
+                                            tickets.map(t => (
+                                                <div key={t._id} style={{ ...inlineStyles.listItem, cursor: 'pointer', borderColor: t.status === 'reopen_requested' ? '#f59e0b' : 'rgba(255,255,255,0.1)' }} onClick={() => setActiveTicket(t)}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <span style={{ color: '#fff', fontWeight: 'bold' }}>{t.subject}</span>
+                                                        <span style={{ color: '#9ca3af', fontSize: 13, display: 'block', marginTop: 4 }}>User ID: {t.user_id}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                        <div style={{ padding: '4px 8px', borderRadius: 4, backgroundColor: t.status === 'open' ? 'rgba(16, 185, 129, 0.2)' : (t.status === 'closed' ? 'rgba(107, 114, 128, 0.2)' : 'rgba(245, 158, 11, 0.2)'), color: '#fff', fontSize: 11, fontWeight: 'bold' }}>
+                                                            {t.status.replace('_', ' ').toUpperCase()}
+                                                        </div>
+                                                        {t.status !== 'closed' && (
+                                                            <button 
+                                                                style={{ padding: '6px 12px', borderRadius: 4, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12 }}
+                                                                onClick={(e) => handleCloseTicketLocally(t._id, e)}
+                                                            >
+                                                                <Lock size={12} /> Close Ticket
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
             </div>
+
+            <SupportChatModal isOpen={!!activeTicket} ticket={activeTicket} onClose={() => { setActiveTicket(null); fetchTickets(); }} />
 
             {/* Ban Dialog */}
             {banDialog && (

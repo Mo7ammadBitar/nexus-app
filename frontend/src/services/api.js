@@ -278,4 +278,15 @@ export const paymentsAPI = {
         api.post('/payments/verify-elite', { order_id: orderId, plan }),
 };
 
+// Support Ticketing API
+export const supportAPI = {
+    createTicket: (subject, message) => api.post('/support/tickets', { subject, message }),
+    getMyTickets: () => api.get('/support/tickets/me'),
+    getTicketMessages: (ticketId) => api.get(`/support/tickets/${ticketId}/messages`),
+    sendMessage: (ticketId, message) => api.post(`/support/tickets/${ticketId}/messages`, { message }),
+    closeTicket: (ticketId) => api.post(`/support/tickets/${ticketId}/close`),
+    requestReopen: (ticketId, reason) => api.post(`/support/tickets/${ticketId}/request-reopen`, { reason }),
+    getAdminTickets: () => api.get('/support/admin/tickets'),
+};
+
 export default api;

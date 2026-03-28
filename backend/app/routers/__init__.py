@@ -16,3 +16,4 @@ from app.routers.admin import router as admin_router
 from app.routers.starred import router as starred_router
 from app.routers.preview import router as preview_router
 from app.routers.search import router as search_router
+from app.routers.support import router as support_router

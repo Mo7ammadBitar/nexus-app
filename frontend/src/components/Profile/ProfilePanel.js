@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView } from 'react-native-web';
-import { Crown, Shield, ShieldCheck, User, Camera, Lock, Sparkles, X, LogOut, Circle, Moon, MinusCircle, Ghost, Package, Gem, Users, Server, Rocket, Check } from 'lucide-react';
+import { Crown, Shield, ShieldCheck, User, Camera, Lock, Sparkles, X, LogOut, Circle, Moon, MinusCircle, Ghost, Package, Gem, Users, Server, Rocket, Check, LifeBuoy, MessageSquare, ArrowLeft, Plus } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useServerStore } from '../../store/serverStore';
 import { useShopStore } from '../../store/shopStore';
 import { useTheme } from '../../context/ThemeProvider';
-import { usersAPI } from '../../services/api';
+import { usersAPI, supportAPI } from '../../services/api';
 import { useTranslation } from 'react-i18next';
 import AdminDashboard from '../Admin/AdminDashboard';
 import StarredMessagesPanel from './StarredMessagesPanel';
+import SupportChatModal from '../Support/SupportChatModal';
 
 import NexusEliteModal from './NexusEliteModal';
 import { getAuraRingStyle, getAuraNameStyle, injectAuraAnimations, getAuraAvatarContainerStyle } from '../../utils/PremiumAura';
@@ -88,6 +89,39 @@ const ProfilePanel = ({ onClose }) => {
     // Shop/Inventory state
     const { shards, ownedRelics, equippedRelics, fetchInventory, equipRelic, unequipRelic } = useShopStore();
     const [inventoryMsg, setInventoryMsg] = useState('');
+
+    // Support Tickets state
+    const [showSupportArea, setShowSupportArea] = useState(false);
+    const [tickets, setTickets] = useState([]);
+    const [activeTicket, setActiveTicket] = useState(null);
+    const [showCreateTicket, setShowCreateTicket] = useState(false);
+    const [newTicketSubject, setNewTicketSubject] = useState('');
+    const [newTicketMessage, setNewTicketMessage] = useState('');
+    const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+
+    const fetchTickets = async () => {
+        try {
+            const res = await supportAPI.getMyTickets();
+            setTickets(res.data);
+        } catch (e) { console.error('Error fetching tickets', e); }
+    };
+
+    const handleCreateTicket = async () => {
+        if (!newTicketSubject.trim() || !newTicketMessage.trim() || isSubmittingTicket) return;
+        setIsSubmittingTicket(true);
+        try {
+            const res = await supportAPI.createTicket(newTicketSubject, newTicketMessage);
+            setShowCreateTicket(false);
+            setNewTicketSubject('');
+            setNewTicketMessage('');
+            fetchTickets();
+            setActiveTicket(res.data);
+        } catch (e) {
+            console.error('Error creating ticket', e);
+        } finally {
+            setIsSubmittingTicket(false);
+        }
+    };
 
     const avatarInputRef = useRef(null);
     const bannerInputRef = useRef(null);
@@ -292,6 +326,78 @@ const ProfilePanel = ({ onClose }) => {
                     </button>
                 </div>
             </div>
+        );
+    }
+
+    if (showSupportArea) {
+        return (
+            <View style={styles.overlay}>
+                <View style={[styles.panel, panelBg && { backgroundColor: panelBg }]}>
+                    <View style={styles.header}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <TouchableOpacity onPress={() => setShowSupportArea(false)} style={{ marginRight: 12 }}>
+                                <ArrowLeft size={20} color="#fff" />
+                            </TouchableOpacity>
+                            <Text style={styles.title}>Support Tickets</Text>
+                        </View>
+                        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                            <X size={20} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView style={styles.content}>
+                        {showCreateTicket ? (
+                            <View style={{ marginBottom: 20 }}>
+                                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600', marginBottom: 16 }}>Create New Ticket</Text>
+                                <View style={styles.field}>
+                                    <Text style={styles.label}>SUBJECT</Text>
+                                    <TextInput style={styles.input} value={newTicketSubject} onChangeText={setNewTicketSubject} placeholder="Brief description of the issue..." placeholderTextColor="#6b7280" />
+                                </View>
+                                <View style={styles.field}>
+                                    <Text style={styles.label}>MESSAGE</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={newTicketMessage} onChangeText={setNewTicketMessage} placeholder="Explain the problem in detail..." placeholderTextColor="#6b7280" multiline numberOfLines={4} />
+                                </View>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <TouchableOpacity style={[styles.saveBtn, { flex: 1, backgroundColor: '#374151', backgroundImage: 'none' }]} onPress={() => setShowCreateTicket(false)}>
+                                        <Text style={styles.saveBtnText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.saveBtn, { flex: 1 }, isSubmittingTicket && styles.saveBtnDisabled]} onPress={handleCreateTicket} disabled={isSubmittingTicket}>
+                                        <Text style={styles.saveBtnText}>{isSubmittingTicket ? 'Submitting...' : 'Submit Ticket'}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        ) : (
+                            <View>
+                                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(139, 92, 246, 0.15)', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#8b5cf6', marginBottom: 24 }} onPress={() => setShowCreateTicket(true)}>
+                                    <Plus size={18} color="#c4b5fd" style={{ marginRight: 8 }} />
+                                    <Text style={{ color: '#c4b5fd', fontWeight: '600' }}>Create New Ticket</Text>
+                                </TouchableOpacity>
+                                
+                                <Text style={{ color: '#9ca3af', fontSize: 13, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase' }}>Your Tickets</Text>
+                                {tickets.length === 0 ? (
+                                    <Text style={{ color: '#6b7280', textAlign: 'center', marginTop: 20 }}>No support tickets found.</Text>
+                                ) : (
+                                    tickets.map(ticket => (
+                                        <TouchableOpacity 
+                                            key={ticket._id} 
+                                            style={{ backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                                            onPress={() => setActiveTicket(ticket)}
+                                        >
+                                            <View style={{ flex: 1, marginRight: 12 }}>
+                                                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '500', marginBottom: 4 }} numberOfLines={1}>{ticket.subject}</Text>
+                                                <Text style={{ color: '#9ca3af', fontSize: 12 }}>Last updated: {new Date(ticket.updated_at).toLocaleDateString()}</Text>
+                                            </View>
+                                            <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, backgroundColor: ticket.status === 'open' ? 'rgba(16, 185, 129, 0.2)' : (ticket.status === 'closed' ? 'rgba(107, 114, 128, 0.2)' : 'rgba(245, 158, 11, 0.2)') }}>
+                                                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#fff' }}>{ticket.status.replace('_', ' ').toUpperCase()}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    ))
+                                )}
+                            </View>
+                        )}
+                    </ScrollView>
+                    <SupportChatModal isOpen={!!activeTicket} ticket={activeTicket} onClose={() => setActiveTicket(null)} onTicketUpdated={() => fetchTickets()} />
+                </View>
+            </View>
         );
     }
 
@@ -628,6 +734,24 @@ const ProfilePanel = ({ onClose }) => {
                                 <Text style={{ color: '#3a3a5a', fontSize: 11, marginTop: 4 }}>{t('profile.visit_shop', 'Visit the Ethereal Shop to connect relics')}</Text>
                             </View>
                         )}
+                    </View>
+
+                    {/* Support Tickets Section */}
+                    <View style={styles.section}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                            <LifeBuoy size={18} color="#8b5cf6" style={{ marginRight: 8 }} />
+                            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Customer Support</Text>
+                        </View>
+                        <TouchableOpacity
+                            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(139, 92, 246, 0.1)', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.3)' }}
+                            onPress={() => { setShowSupportArea(true); fetchTickets(); }}
+                        >
+                            <MessageSquare size={20} color="#8b5cf6" style={{ marginRight: 16 }} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 2 }}>Contact Support</Text>
+                                <Text style={{ color: '#9ca3af', fontSize: 13 }}>View past tickets or create a new request</Text>
+                            </View>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Admin Tools Section */}
