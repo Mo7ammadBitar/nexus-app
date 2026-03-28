@@ -3,7 +3,6 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 
 import { supportAPI } from '../../services/api';
 import { X, Send, AlertCircle, RefreshCcw } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import { format } from 'date-fns';
 
 const SupportChatModal = ({ isOpen, onClose, ticket, onTicketUpdated }) => {
     const { user } = useAuthStore();
@@ -109,7 +108,7 @@ const SupportChatModal = ({ isOpen, onClose, ticket, onTicketUpdated }) => {
                                     <View style={[styles.messageBubble, isMe ? styles.messageBubbleMe : styles.messageBubbleThem]}>
                                         <Text style={styles.messageText}>{msg.message}</Text>
                                         <Text style={[styles.messageTime, isMe ? styles.messageTimeMe : styles.messageTimeThem]}>
-                                            {format(new Date(msg.timestamp), 'MMM d, h:mm a')}
+                                            {new Date(msg.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                                         </Text>
                                     </View>
                                 </View>
