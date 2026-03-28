@@ -737,22 +737,24 @@ const ProfilePanel = ({ onClose }) => {
                     </View>
 
                     {/* Support Tickets Section */}
-                    <View style={styles.section}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                            <LifeBuoy size={18} color="#8b5cf6" style={{ marginRight: 8 }} />
-                            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Customer Support</Text>
-                        </View>
-                        <TouchableOpacity
-                            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(139, 92, 246, 0.1)', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.3)' }}
-                            onPress={() => { setShowSupportArea(true); fetchTickets(); }}
-                        >
-                            <MessageSquare size={20} color="#8b5cf6" style={{ marginRight: 16 }} />
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 2 }}>Contact Support</Text>
-                                <Text style={{ color: '#9ca3af', fontSize: 13 }}>View past tickets or create a new request</Text>
+                    {!isAdmin && (
+                        <View style={styles.section}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                                <LifeBuoy size={18} color="#8b5cf6" style={{ marginRight: 8 }} />
+                                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Customer Support</Text>
                             </View>
-                        </TouchableOpacity>
-                    </View>
+                            <TouchableOpacity
+                                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(139, 92, 246, 0.1)', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.3)' }}
+                                onPress={() => { setShowSupportArea(true); fetchTickets(); }}
+                            >
+                                <MessageSquare size={20} color="#8b5cf6" style={{ marginRight: 16 }} />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 2 }}>Contact Support</Text>
+                                    <Text style={{ color: '#9ca3af', fontSize: 13 }}>View past tickets or create a new request</Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
                     {/* Admin Tools Section */}
                     {isAdmin && (
