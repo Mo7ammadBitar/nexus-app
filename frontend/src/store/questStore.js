@@ -33,12 +33,18 @@ export const useQuestStore = create((set, get) => ({
             );
             set({ quests, claimingQuestId: null });
 
-            // Update user's aether_shards in authStore
+            // Sync new shard balance to BOTH stores so UI updates instantly
             try {
                 const { useAuthStore } = await import('./authStore');
                 useAuthStore.getState().updateUser({ aether_shards: new_balance });
             } catch (e) {
                 console.warn('Could not update auth store:', e);
+            }
+            try {
+                const { useShopStore } = await import('./shopStore');
+                useShopStore.setState({ shards: new_balance });
+            } catch (e) {
+                console.warn('Could not update shop store:', e);
             }
 
             return { success: true, shards_earned, new_balance };
