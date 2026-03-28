@@ -623,7 +623,7 @@ const AdminDashboard = ({ onClose }) => {
                                                 <div key={t._id} style={{ ...inlineStyles.listItem, cursor: 'pointer', borderColor: t.status === 'reopen_requested' ? '#f59e0b' : 'rgba(255,255,255,0.1)' }} onClick={() => setActiveTicket(t)}>
                                                     <div style={{ flex: 1 }}>
                                                         <span style={{ color: '#fff', fontWeight: 'bold' }}>{t.subject}</span>
-                                                        <span style={{ color: '#9ca3af', fontSize: 13, display: 'block', marginTop: 4 }}>User ID: {t.user_id}</span>
+                                                        <span style={{ color: '#9ca3af', fontSize: 13, display: 'block', marginTop: 4 }}>User: {t.username || t.user_id}</span>
                                                     </div>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                                         <div style={{ padding: '4px 8px', borderRadius: 4, backgroundColor: t.status === 'open' ? 'rgba(16, 185, 129, 0.2)' : (t.status === 'closed' ? 'rgba(107, 114, 128, 0.2)' : 'rgba(245, 158, 11, 0.2)'), color: '#fff', fontSize: 11, fontWeight: 'bold' }}>

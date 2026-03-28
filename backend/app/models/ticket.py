@@ -27,7 +27,7 @@ class TicketInDB(TicketBase):
         json_encoders = {PyObjectId: str}
 
 class TicketResponse(TicketInDB):
-    pass
+    username: Optional[str] = None
 
 class ReopenRequest(BaseModel):
     reason: str = Field(..., min_length=1, max_length=500)

@@ -72,7 +72,21 @@ async def get_my_tickets(current_user: dict = Depends(get_current_user)):
         tickets_col = get_tickets_collection()
         cursor = tickets_col.find({"user_id": str(current_user["_id"])}).sort("updated_at", -1)
         tickets = await cursor.to_list(length=100)
-        for t in tickets: t["_id"] = str(t["_id"])
+        
+        from app.database import get_users_collection
+        users_col = get_users_collection()
+        user_ids = []
+        for t in tickets:
+            try: user_ids.append(ObjectId(t["user_id"]))
+            except Exception: pass
+            
+        users = await users_col.find({"_id": {"$in": user_ids}}).to_list(length=None)
+        user_map = {str(u["_id"]): u.get("username", "Unknown User") for u in users}
+        
+        for t in tickets: 
+            t["_id"] = str(t["_id"])
+            t["username"] = user_map.get(t["user_id"], "Unknown User")
+            
         return tickets
     except Exception as e:
         import logging
@@ -230,7 +244,21 @@ async def get_all_tickets(current_user: dict = Depends(get_current_user)):
             ("updated_at", -1)
         ])
         tickets = await cursor.to_list(length=500)
-        for t in tickets: t["_id"] = str(t["_id"])
+        
+        from app.database import get_users_collection
+        users_col = get_users_collection()
+        user_ids = []
+        for t in tickets:
+            try: user_ids.append(ObjectId(t["user_id"]))
+            except Exception: pass
+            
+        users = await users_col.find({"_id": {"$in": user_ids}}).to_list(length=None)
+        user_map = {str(u["_id"]): u.get("username", "Unknown User") for u in users}
+        
+        for t in tickets: 
+            t["_id"] = str(t["_id"])
+            t["username"] = user_map.get(t["user_id"], "Unknown User")
+            
         return tickets
     except HTTPException:
         raise
