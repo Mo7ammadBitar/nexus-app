@@ -158,6 +158,19 @@ async def join_server(
     
     try:
         await MemberService.join_server(server["_id"], current_user["_id"])
+        
+        # Quest: increment total_servers_joined
+        try:
+            from app.database import get_users_collection
+            from bson import ObjectId
+            users_col = get_users_collection()
+            await users_col.update_one(
+                {"_id": ObjectId(current_user["_id"])},
+                {"$inc": {"total_servers_joined": 1}}
+            )
+        except Exception:
+            pass  # Non-critical
+        
         return {
             "message": "Joined server successfully",
             "server": {

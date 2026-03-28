@@ -76,6 +76,11 @@ class Database:
         await cls.db.tickets.create_index("user_id")
         await cls.db.tickets.create_index("status")
         await cls.db.ticket_messages.create_index("ticket_id")
+
+        # Quest Progress collection indexes
+        await cls.db.user_quest_progress.create_index(
+            [("user_id", 1), ("quest_id", 1)], unique=True
+        )
         
         print("✅ Database indexes created")
 
@@ -140,3 +145,8 @@ def get_tickets_collection():
 def get_ticket_messages_collection():
     _check_db()
     return Database.db.ticket_messages
+
+
+def get_quest_progress_collection():
+    _check_db()
+    return Database.db.user_quest_progress

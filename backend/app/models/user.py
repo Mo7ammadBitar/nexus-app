@@ -131,6 +131,16 @@ class UserResponse(BaseModel):
     available_server_boosts: int = 0
     equipped_relics: Optional[dict] = {}
     
+    # Invite Code
+    invite_code: Optional[str] = None
+    
+    # Quest Stats
+    total_messages_sent: int = 0
+    total_invites_successful: int = 0
+    has_uploaded_avatar: bool = False
+    total_reactions_given: int = 0
+    total_servers_joined: int = 0
+    
     class Config:
         populate_by_name = True
 
@@ -173,6 +183,17 @@ class UserInDB(BaseModel):
     available_server_boosts: int = 0
     owned_relics: Optional[List[str]] = []
     equipped_relics: Optional[dict] = {}  # {"frame": "relic_id", "bubble": "relic_id"}
+    
+    # Invite Code
+    invite_code: Optional[str] = None
+    referred_by: Optional[str] = None  # user_id of who referred this user
+    
+    # Quest Stats
+    total_messages_sent: int = 0
+    total_invites_successful: int = 0
+    has_uploaded_avatar: bool = False
+    total_reactions_given: int = 0
+    total_servers_joined: int = 0
     
     # Ban System
     is_banned: bool = False

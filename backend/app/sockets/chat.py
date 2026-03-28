@@ -237,6 +237,15 @@ class ChatNamespace(socketio.AsyncNamespace):
         room = f"channel_{channel_id}"
         await self.emit("new_message", serialized_message, room=room)
         
+        # Quest: increment total_messages_sent
+        try:
+            await users_col.update_one(
+                {"_id": ObjectId(user["user_id"])},
+                {"$inc": {"total_messages_sent": 1}}
+            )
+        except Exception:
+            pass  # Non-critical, don't break messaging
+        
         return {"success": True, "message": serialized_message}
     
     async def on_typing_start(self, sid, data):

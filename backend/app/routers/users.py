@@ -134,7 +134,7 @@ async def upload_avatar(
     
     await AuthService.update_user_profile(
         current_user["_id"],
-        {"avatar_url": avatar_url, "avatar_type": avatar_type}
+        {"avatar_url": avatar_url, "avatar_type": avatar_type, "has_uploaded_avatar": True}
     )
     
     return {

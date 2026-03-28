@@ -26,6 +26,8 @@ async def register(request: RegisterRequest):
     try:
         from app.services.email_service import generate_otp, send_otp_email
         from datetime import datetime, timedelta
+        import random
+        import string
         
         user_data = UserCreate(
             username=request.username,
@@ -34,15 +36,39 @@ async def register(request: RegisterRequest):
         )
         user = await AuthService.create_user(user_data)
         
+        # Generate unique invite code (NEX-XXXX format)
+        invite_code = "NEX-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        # Ensure uniqueness
+        users_col = get_users_collection()
+        while await users_col.find_one({"invite_code": invite_code}):
+            invite_code = "NEX-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        
+        update_fields = {
+            "invite_code": invite_code,
+        }
+        
+        # Handle referral tracking if invite_code was provided
+        if request.invite_code:
+            referrer = await users_col.find_one({"invite_code": request.invite_code})
+            if referrer:
+                update_fields["referred_by"] = str(referrer["_id"])
+                # Increment referrer's total_invites_successful
+                await users_col.update_one(
+                    {"_id": referrer["_id"]},
+                    {"$inc": {"total_invites_successful": 1}}
+                )
+        
         # Generate and save email verification OTP
         otp = await generate_otp()
         expires_at = datetime.utcnow() + timedelta(minutes=10)
         
-        await AuthService.update_user_profile(user["_id"], {
+        update_fields.update({
             "email_verification_token": otp,
             "email_verification_expires": expires_at,
             "is_email_verified": False
         })
+        
+        await AuthService.update_user_profile(user["_id"], update_fields)
         
         # Send verification email
         await send_otp_email(request.email, otp, context="registration")
@@ -118,6 +144,30 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     # Create token
     token = AuthService.create_user_token(user)
     
+    # --- Login streak tracking ---
+    from datetime import datetime, timedelta
+    from app.database import get_users_collection
+    users_col = get_users_collection()
+    now = datetime.utcnow()
+    last_login = user.get("login_streak_last_date")
+    current_streak = user.get("login_streak_current", 0)
+    
+    if last_login:
+        delta = (now.date() - last_login.date()).days
+        if delta == 1:
+            new_streak = current_streak + 1
+        elif delta == 0:
+            new_streak = current_streak
+        else:
+            new_streak = 1
+    else:
+        new_streak = 1
+    
+    await users_col.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"login_streak_current": new_streak, "login_streak_last_date": now}}
+    )
+    
     return TokenResponse(
         access_token=token,
         user_id=str(user["_id"]),
@@ -155,6 +205,14 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
         "available_server_boosts": current_user.get("available_server_boosts", 0),
         "owned_relics": current_user.get("owned_relics", []),
         "equipped_relics": current_user.get("equipped_relics", {}),
+        # Invite Code
+        "invite_code": current_user.get("invite_code"),
+        # Quest Stats
+        "total_messages_sent": current_user.get("total_messages_sent", 0),
+        "total_invites_successful": current_user.get("total_invites_successful", 0),
+        "has_uploaded_avatar": current_user.get("has_uploaded_avatar", False),
+        "total_reactions_given": current_user.get("total_reactions_given", 0),
+        "total_servers_joined": current_user.get("total_servers_joined", 0),
     }
     
     return safe_user

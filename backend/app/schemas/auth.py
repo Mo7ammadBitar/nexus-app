@@ -25,6 +25,7 @@ class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=32, pattern=r"^[a-zA-Z0-9_]+$")
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=100)
+    invite_code: Optional[str] = None  # Optional referral invite code
 
 
 class RegisterResponse(BaseModel):

@@ -229,6 +229,16 @@ async def send_message(
         
     await sio.emit("new_message", safe_message, room=room, namespace="/chat")
     
+    # Quest: increment total_messages_sent
+    try:
+        users_col = get_users_collection()
+        await users_col.update_one(
+            {"_id": ObjectId(current_user["_id"])},
+            {"$inc": {"total_messages_sent": 1}}
+        )
+    except Exception:
+        pass  # Non-critical
+    
     return {"message": "Message sent", "data": message}
 
 
@@ -350,6 +360,16 @@ async def add_reaction(
         "message_id": message_id,
         "reactions": result.get("reactions", {})
     }, room=room, namespace="/chat")
+
+    # Quest: increment total_reactions_given
+    try:
+        users_col = get_users_collection()
+        await users_col.update_one(
+            {"_id": ObjectId(current_user["_id"])},
+            {"$inc": {"total_reactions_given": 1}}
+        )
+    except Exception:
+        pass  # Non-critical
 
     return {"message": "Reaction added", "reactions": result.get("reactions", {})}
 

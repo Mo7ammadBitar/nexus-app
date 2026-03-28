@@ -15,6 +15,7 @@ const RegisterScreen = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [inviteCode, setInviteCode] = useState('');
     const [localError, setLocalError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -54,7 +55,7 @@ const RegisterScreen = () => {
             return;
         }
 
-        const result = await register(username, email, password);
+        const result = await register(username, email, password, inviteCode || null);
         if (result.success) {
             navigate('/verify-email', { state: { email } });
         }
@@ -165,6 +166,22 @@ const RegisterScreen = () => {
                                     )}
                                 </TouchableOpacity>
                             </View>
+                        </View>
+
+                        {/* Invite Code (Optional) */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>{t('register.invite_code_label', 'INVITE CODE (OPTIONAL)')}</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder={t('register.invite_code_placeholder', 'e.g. NEX-8X2A')}
+                                placeholderTextColor="#6b7280"
+                                value={inviteCode}
+                                onChangeText={(text) => setInviteCode(text.toUpperCase())}
+                                autoCapitalize="characters"
+                                maxLength={8}
+                                onKeyPress={handleKeyPress}
+                            />
+                            <Text style={styles.hint}>{t('register.invite_code_hint', 'Got a code from a friend? Enter it here')}</Text>
                         </View>
 
                         <TouchableOpacity

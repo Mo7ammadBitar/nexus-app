@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { economyAPI, shopAPI } from '../services/api';
+import { shopAPI } from '../services/api';
 import { useAuthStore } from './authStore';
 import i18n from '../i18n';
 
@@ -23,18 +23,6 @@ export const useShopStore = create((set, get) => ({
             });
         } catch (error) {
             set({ isLoading: false, error: error.response?.data?.detail || i18n.t('store.failed_load_shop', 'Failed to load shop') });
-        }
-    },
-
-    // Claim reward from watching ad
-    claimReward: async () => {
-        try {
-            const response = await economyAPI.claimReward();
-            set({ shards: response.data.new_balance });
-            return { success: true, message: response.data.message };
-        } catch (error) {
-            const msg = error.response?.data?.detail || i18n.t('store.failed_claim_reward', 'Failed to claim reward');
-            return { success: false, error: msg };
         }
     },
 

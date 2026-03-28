@@ -11,7 +11,7 @@ import os
 
 from app.config import get_settings
 from app.database import Database
-from app.routers import auth_router, users_router, servers_router, friends_router, dm_router, admin_router, messages_router, starred_router, preview_router, search_router, economy_router, shop_router, oracle_router, payments_router, debug_router, support_router
+from app.routers import auth_router, users_router, servers_router, friends_router, dm_router, admin_router, messages_router, starred_router, preview_router, search_router, economy_router, shop_router, oracle_router, payments_router, debug_router, support_router, quests_router
 from app.sockets import ChatNamespace, VoiceNamespace
 
 settings = get_settings()
@@ -158,6 +158,7 @@ app.include_router(oracle_router)
 app.include_router(payments_router)
 app.include_router(debug_router)
 app.include_router(support_router)
+app.include_router(quests_router)
 
 
 @app.get("/")

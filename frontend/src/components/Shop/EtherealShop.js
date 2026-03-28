@@ -3,10 +3,10 @@ import ReactDOM from 'react-dom';
 import { useShopStore } from '../../store/shopStore';
 import { useAuthStore } from '../../store/authStore';
 import { useServerStore } from '../../store/serverStore';
-import useRewardedAd from './AdProvider';
+import QuestsPanel from './QuestsPanel';
 import PayPalCheckoutButton from './PayPalCheckoutButton';
 import { paymentsAPI, shopAPI } from '../../services/api';
-import { Gem, Sparkles, Eye, X, LayoutGrid, Frame, MessageCircle, XCircle, Check, Coins, Rocket } from 'lucide-react';
+import { Gem, Sparkles, X, LayoutGrid, Frame, MessageCircle, XCircle, Check, Coins, Rocket, Trophy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 // Maps relic IDs to their CSS class names
@@ -35,13 +35,11 @@ const EtherealShop = ({ isOpen, onClose }) => {
     const { updateUser } = useAuthStore();
     const {
         shards, relicsCatalog, isLoading, error,
-        fetchShop, claimReward, buyRelic, equipRelic, unequipRelic
+        fetchShop, buyRelic, equipRelic, unequipRelic
     } = useShopStore();
     const { servers } = useServerStore();
 
-    const { showRewardedAd, AdModal } = useRewardedAd();
     const [notification, setNotification] = useState(null);
-    const [claimingReward, setClaimingReward] = useState(false);
     const [buyingId, setBuyingId] = useState(null);
     const [activeFilter, setActiveFilter] = useState('all');
     
@@ -84,36 +82,6 @@ const EtherealShop = ({ isOpen, onClose }) => {
     const showNotification = (msg) => {
         setNotification(msg);
         setTimeout(() => setNotification(null), 3000);
-    };
-
-    const handleWatchAd = () => {
-        showRewardedAd(
-            // onReward
-            async () => {
-                setClaimingReward(true);
-                const result = await claimReward();
-                if (result.success) {
-                    showNotification(
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Sparkles size={16} color="#fbbf24" />
-                            <span>{result.message}</span>
-                        </div>
-                    );
-                } else {
-                    showNotification(
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <XCircle size={16} color="#ef4444" />
-                            <span>{result.error}</span>
-                        </div>
-                    );
-                }
-                setClaimingReward(false);
-            },
-            // onDismiss
-            () => {
-                showNotification(t('shop.msg_vision_dismissed', 'Vision dismissed — no shards earned.'));
-            }
-        );
     };
 
     const handleBuy = async (relicId) => {
@@ -208,7 +176,7 @@ const EtherealShop = ({ isOpen, onClose }) => {
         { id: 'pack_large', shards: 1200, price: '9.99', name: t('shop.pack_large', 'Chest of Shards') }
     ];
 
-    if (!isOpen) return AdModal;
+    if (!isOpen) return null;
 
     /** Renders the live preview for a frame relic */
     const renderFramePreview = (relic) => {
@@ -380,41 +348,15 @@ const EtherealShop = ({ isOpen, onClose }) => {
                 )}
 
                 <div style={shopStyles.content} className="mobile-shop-content">
-                    {/* Astral Vision Card (Rewarded Ad) */}
-                    <div style={shopStyles.visionCard} className="mobile-vision-card">
-                        <div style={shopStyles.visionLeft} className="mobile-vision-left">
-                            <div style={shopStyles.visionOrb}>
-                                <Eye size={24} />
-                            </div>
-
-                            <div>
-                                <h3 style={shopStyles.visionTitle}>{t('shop.vision_title', 'Astral Vision')}</h3>
-                                <p style={shopStyles.visionDesc}>
-                                    {t('shop.vision_desc', 'Gaze into the ethereal plane to earn shards')}
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            style={{
-                                ...shopStyles.visionBtn,
-                                opacity: claimingReward ? 0.6 : 1,
-                            }}
-                            onClick={handleWatchAd}
-                            disabled={claimingReward}
-                        >
-                            <Sparkles size={14} style={{ marginRight: 6 }} />
-                            {t('shop.btn_watch', 'Watch to Earn (+50)')}
-                        </button>
-                    </div>
-
-                    {/* Filter Tabs — using separate border properties to avoid React warnings */}
+                    {/* Filter Tabs */}
                     <div style={shopStyles.filterRow} className="mobile-filter-row">
-                        {['all', 'frame', 'bubble', 'treasury'].map(filter => (
+                        {['all', 'frame', 'bubble', 'treasury', 'quests'].map(filter => (
                             <button
                                 key={filter}
                                 style={{
                                     ...shopStyles.filterTab,
                                     ...(activeFilter === filter ? shopStyles.filterTabActive : {}),
+                                    ...(filter === 'quests' && activeFilter !== 'quests' ? { borderColor: 'rgba(251, 191, 36, 0.3)', color: '#fbbf24' } : {}),
                                 }}
                                 onClick={() => setActiveFilter(filter)}
                             >
@@ -422,10 +364,16 @@ const EtherealShop = ({ isOpen, onClose }) => {
                                 {filter === 'frame' && <Frame size={14} style={{ marginRight: 6 }} />}
                                 {filter === 'bubble' && <MessageCircle size={14} style={{ marginRight: 6 }} />}
                                 {filter === 'treasury' && <Coins size={14} style={{ marginRight: 6 }} />}
-                                {filter === 'all' ? t('shop.filter_all', 'All Relics') : filter === 'frame' ? t('shop.filter_frames', 'Frames') : filter === 'bubble' ? t('shop.filter_bubbles', 'Bubbles') : t('shop.filter_treasury', 'Treasury')}
+                                {filter === 'quests' && <Trophy size={14} style={{ marginRight: 6 }} />}
+                                {filter === 'all' ? t('shop.filter_all', 'All Relics') : filter === 'frame' ? t('shop.filter_frames', 'Frames') : filter === 'bubble' ? t('shop.filter_bubbles', 'Bubbles') : filter === 'treasury' ? t('shop.filter_treasury', 'Treasury') : 'Quests'}
                             </button>
                         ))}
                     </div>
+
+                    {/* Quests View */}
+                    {activeFilter === 'quests' && (
+                        <QuestsPanel />
+                    )}
 
                     {/* Treasury View */}
                     {activeFilter === 'treasury' ? (
@@ -558,7 +506,6 @@ const EtherealShop = ({ isOpen, onClose }) => {
                     )}
                 </div>
             </div>
-            {AdModal}
             
             {/* Server Boost Selection Modal */}
             {showBoostModal && (

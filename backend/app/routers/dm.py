@@ -265,6 +265,16 @@ async def send_message(
             except Exception as e:
                 print(f"⚠️ Oracle Socket Emit Error: {e}")
 
+        # Quest: increment total_messages_sent for DM
+        try:
+            users_col = get_users_collection()
+            await users_col.update_one(
+                {"_id": ObjectId(current_user["_id"])},
+                {"$inc": {"total_messages_sent": 1}}
+            )
+        except Exception:
+            pass  # Non-critical
+
         return {"message": "Message sent", "dm": message}
 
     except ValueError as e:
@@ -360,6 +370,17 @@ async def add_reaction(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Message not found"
         )
+    
+    # Quest: increment total_reactions_given
+    try:
+        users_col = get_users_collection()
+        await users_col.update_one(
+            {"_id": ObjectId(current_user["_id"])},
+            {"$inc": {"total_reactions_given": 1}}
+        )
+    except Exception:
+        pass  # Non-critical
+    
     return {"message": "Reaction added", "reactions": result.get("reactions", {})}
 
 

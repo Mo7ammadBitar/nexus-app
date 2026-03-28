@@ -70,11 +70,11 @@ export const useAuthStore = create((set, get) => ({
     },
 
     // Register
-    register: async (username, email, password) => {
+    register: async (username, email, password, inviteCode = null) => {
         set({ isLoading: true, error: null });
 
         try {
-            await authAPI.register(username, email, password);
+            await authAPI.register(username, email, password, inviteCode);
             set({ isLoading: false });
             return { success: true };
         } catch (error) {

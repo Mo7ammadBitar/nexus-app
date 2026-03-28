@@ -47,8 +47,11 @@ export const authAPI = {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
     },
-    register: (username, email, password) =>
-        api.post('/auth/register', { username, email, password }),
+    register: (username, email, password, inviteCode = null) => {
+        const payload = { username, email, password };
+        if (inviteCode) payload.invite_code = inviteCode;
+        return api.post('/auth/register', payload);
+    },
     getMe: () => api.get('/auth/me'),
     verifyEmail: async (email, otp) => {
         const response = await api.post('/auth/verify-email', { email, otp });
@@ -247,9 +250,10 @@ export const searchAPI = {
     searchMessages: (query, limit = 20) => api.get(`/search?q=${encodeURIComponent(query)}&limit=${limit}`),
 };
 
-// Economy API
-export const economyAPI = {
-    claimReward: () => api.post('/economy/claim-reward'),
+// Quests API (replaced old Economy/Ad API)
+export const questsAPI = {
+    getQuests: () => api.get('/quests'),
+    claimQuest: (questId) => api.post(`/quests/${questId}/claim`),
 };
 
 // Shop API
