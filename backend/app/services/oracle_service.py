@@ -47,6 +47,7 @@ class OracleService:
                 "avatar_type": "static",
                 "bio": "I guide Spirits through the Nexus. Ask me anything.",
                 "is_premium": True,
+                "is_email_verified": True,
                 "is_online": True,  # Always manifested
                 "status": "online",
                 "is_banned": False,

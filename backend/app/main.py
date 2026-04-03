@@ -61,6 +61,13 @@ async def seed_super_admin_on_startup():
     })
     
     if existing:
+        # Backfill is_email_verified for legacy super admin accounts
+        if not existing.get("is_email_verified"):
+            await users.update_one(
+                {"_id": existing["_id"]},
+                {"$set": {"is_email_verified": True}}
+            )
+            print(f"✅ Super Admin backfilled is_email_verified: {existing.get('username', settings.super_admin_username)}")
         print(f"✅ Super Admin exists: {existing.get('username', settings.super_admin_username)}")
         return
     
@@ -78,6 +85,7 @@ async def seed_super_admin_on_startup():
             "banner_type": BannerType.SOLID.value,
             "bio": "System Administrator",
             "is_premium": True,
+            "is_email_verified": True,
             "is_banned": False,
             "ban_reason": None,
             "ban_expires_at": None,

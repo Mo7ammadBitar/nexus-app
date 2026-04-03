@@ -240,6 +240,7 @@ async def list_users(
             "is_banned": user.get("is_banned", False),
             "ban_reason": user.get("ban_reason"),
             "ban_expires_at": user.get("ban_expires_at"),
+            "is_email_verified": user.get("is_email_verified", user.get("role", "user") in ("admin", "super_admin", "system")),
             "created_at": user.get("created_at")
         })
     

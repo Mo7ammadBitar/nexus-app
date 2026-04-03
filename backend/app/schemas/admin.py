@@ -59,6 +59,7 @@ class AdminUserResponse(BaseModel):
     is_banned: bool
     ban_reason: Optional[str]
     ban_expires_at: Optional[datetime]
+    is_email_verified: bool = False
     is_deleted: bool
     created_at: datetime
 

@@ -281,6 +281,7 @@ async def get_user_profile(
         "is_online": user.get("is_online", False),
         "created_at": user.get("created_at"),
         "equipped_relics": user.get("equipped_relics", {}),
+        "is_email_verified": user.get("is_email_verified", user.get("role", "user") in ("admin", "super_admin", "system")),
     }
 
 

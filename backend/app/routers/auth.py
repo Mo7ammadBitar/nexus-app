@@ -134,8 +134,9 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             detail="Account has been deleted"
         )
     
-    # Check if email is verified
-    if not user.get("is_email_verified", False):
+    # Check if email is verified (bypass for admin/super_admin roles)
+    user_role = user.get("role", "user")
+    if user_role not in ("admin", "super_admin", "system") and not user.get("is_email_verified", False):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Email not verified. Please verify your email first."
@@ -213,6 +214,8 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
         "has_uploaded_avatar": current_user.get("has_uploaded_avatar", False),
         "total_reactions_given": current_user.get("total_reactions_given", 0),
         "total_servers_joined": current_user.get("total_servers_joined", 0),
+        # Email verification
+        "is_email_verified": current_user.get("is_email_verified", current_user.get("role", "user") in ("admin", "super_admin", "system")),
     }
     
     return safe_user
