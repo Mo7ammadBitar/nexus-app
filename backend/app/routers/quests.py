@@ -21,7 +21,7 @@ QUESTS_CATALOG = [
         "description": "Send your first 100 messages across servers or DMs.",
         "reward_shards": 100,
         "is_repeatable": False,
-        "icon": "💬",
+        "icon": "MessageSquare",
         "requirement_type": "total_messages_sent",
         "requirement_value": 100,
         "category": "engagement"
@@ -32,7 +32,7 @@ QUESTS_CATALOG = [
         "description": "Send 500 messages across any servers or DMs.",
         "reward_shards": 250,
         "is_repeatable": False,
-        "icon": "🗣️",
+        "icon": "MessagesSquare",
         "requirement_type": "total_messages_sent",
         "requirement_value": 500,
         "category": "engagement"
@@ -43,7 +43,7 @@ QUESTS_CATALOG = [
         "description": "Invite 3 friends who join Nexus using your invite code.",
         "reward_shards": 500,
         "is_repeatable": False,
-        "icon": "🦋",
+        "icon": "Users",
         "requirement_type": "total_invites_successful",
         "requirement_value": 3,
         "category": "growth"
@@ -54,7 +54,7 @@ QUESTS_CATALOG = [
         "description": "Upload your first profile avatar.",
         "reward_shards": 75,
         "is_repeatable": False,
-        "icon": "🎭",
+        "icon": "UserCircle",
         "requirement_type": "has_uploaded_avatar",
         "requirement_value": 1,
         "category": "profile"
@@ -65,7 +65,7 @@ QUESTS_CATALOG = [
         "description": "Log in to Nexus today. Repeatable every 24 hours.",
         "reward_shards": 20,
         "is_repeatable": True,
-        "icon": "☀️",
+        "icon": "Sun",
         "requirement_type": "daily_login",
         "requirement_value": 1,
         "category": "retention"
@@ -76,7 +76,7 @@ QUESTS_CATALOG = [
         "description": "React to 50 messages with emojis.",
         "reward_shards": 100,
         "is_repeatable": False,
-        "icon": "⚡",
+        "icon": "Zap",
         "requirement_type": "total_reactions_given",
         "requirement_value": 50,
         "category": "engagement"
@@ -87,7 +87,7 @@ QUESTS_CATALOG = [
         "description": "Join 3 different servers.",
         "reward_shards": 150,
         "is_repeatable": False,
-        "icon": "🧭",
+        "icon": "Compass",
         "requirement_type": "total_servers_joined",
         "requirement_value": 3,
         "category": "growth"

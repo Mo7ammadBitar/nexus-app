@@ -1,6 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useQuestStore } from '../../store/questStore';
-import { Trophy, Gift, Sparkles, CheckCircle, Clock, ChevronRight } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
+import { Trophy, Gift, Sparkles, CheckCircle, Clock, ChevronRight, Copy, Check, MessageSquare, MessagesSquare, Users, UserCircle, Sun, Zap, Compass } from 'lucide-react';
+
+const QUEST_ICON_MAP = {
+    MessageSquare: MessageSquare,
+    MessagesSquare: MessagesSquare,
+    Users: Users,
+    UserCircle: UserCircle,
+    Sun: Sun,
+    Zap: Zap,
+    Compass: Compass,
+};
 
 const CATEGORY_COLORS = {
     engagement: { bg: 'rgba(139, 92, 246, 0.15)', border: '#8b5cf6', icon: '#a78bfa' },
@@ -51,8 +62,8 @@ const QuestCard = ({ quest, onClaim, isClaiming }) => {
         }}>
             {/* Quest Header */}
             <div style={styles.questHeader}>
-                <div style={styles.questIconWrap}>
-                    <span style={{ fontSize: 28 }}>{quest.icon}</span>
+                <div style={{ ...styles.questIconWrap, background: colors.bg }}>
+                    {(() => { const Icon = QUEST_ICON_MAP[quest.icon]; return Icon ? <Icon size={24} style={{ color: colors.icon }} /> : <span style={{ fontSize: 24 }}>{quest.icon}</span>; })()}
                 </div>
                 <div style={styles.questInfo}>
                     <div style={styles.questTitleRow}>
@@ -119,8 +130,18 @@ const QuestCard = ({ quest, onClaim, isClaiming }) => {
 
 const QuestsPanel = () => {
     const { quests, isLoading, error, fetchQuests, claimQuest, claimingQuestId } = useQuestStore();
+    const user = useAuthStore(state => state.user);
     const [filter, setFilter] = useState('all');
     const [claimFeedback, setClaimFeedback] = useState(null);
+    const [copied, setCopied] = useState(false);
+
+    const handleCopyCode = () => {
+        if (user?.invite_code) {
+            navigator.clipboard.writeText(user.invite_code);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
 
     useEffect(() => {
         fetchQuests();
@@ -177,6 +198,26 @@ const QuestsPanel = () => {
                     </span>
                 </div>
             </div>
+
+            {/* Invite Code Banner */}
+            {user?.invite_code && (
+                <div style={styles.inviteBanner}>
+                    <div style={styles.inviteBannerLeft}>
+                        <span style={{ fontSize: 20 }}>🦋</span>
+                        <div>
+                            <div style={styles.inviteLabel}>Your Invite Code</div>
+                            <div style={styles.inviteDesc}>Share this code with friends to earn 500 Shards!</div>
+                        </div>
+                    </div>
+                    <button style={styles.inviteCodeBtn} onClick={handleCopyCode}>
+                        <span style={styles.inviteCodeText}>{user.invite_code}</span>
+                        {copied
+                            ? <Check size={14} style={{ color: '#4ade80', marginLeft: 8, flexShrink: 0 }} />
+                            : <Copy size={14} style={{ color: '#9ca3af', marginLeft: 8, flexShrink: 0 }} />
+                        }
+                    </button>
+                </div>
+            )}
 
             {/* Claim Feedback Toast */}
             {claimFeedback && (
@@ -493,6 +534,50 @@ const styles = {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '40px 20px',
+    },
+    inviteBanner: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(16, 185, 129, 0.08))',
+        border: '1px solid rgba(34, 197, 94, 0.2)',
+        borderRadius: 14,
+        padding: '14px 18px',
+        marginBottom: 16,
+        flexWrap: 'wrap',
+    },
+    inviteBannerLeft: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+    },
+    inviteLabel: {
+        color: '#4ade80',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    inviteDesc: {
+        color: '#6b7280',
+        fontSize: 12,
+        marginTop: 2,
+    },
+    inviteCodeBtn: {
+        display: 'flex',
+        alignItems: 'center',
+        background: 'rgba(255,255,255,0.06)',
+        border: '1px dashed rgba(255,255,255,0.15)',
+        borderRadius: 10,
+        padding: '10px 16px',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+    },
+    inviteCodeText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '800',
+        letterSpacing: 2,
+        fontFamily: 'monospace',
     },
 };
 
