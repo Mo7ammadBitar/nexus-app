@@ -37,6 +37,15 @@ export const useServerStore = create((set, get) => ({
             // Ignore if friendsStore not available
         }
 
+        // Reset UI overlays so the main content area shows the chat
+        try {
+            const { useUIStore } = require('./uiStore');
+            useUIStore.getState().setShowPrimeScreen(false);
+            useUIStore.getState().setShowFriendsPanel(false);
+        } catch (e) {
+            // Ignore if uiStore not available
+        }
+
         set({ isLoading: true, currentChannel: null, messages: [] });
         try {
             const response = await serversAPI.getServer(serverId);
