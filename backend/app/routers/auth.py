@@ -169,6 +169,18 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         {"$set": {"login_streak_current": new_streak, "login_streak_last_date": now}}
     )
     
+    # --- Backfill invite code for existing users ---
+    if not user.get("invite_code"):
+        import random
+        import string
+        invite_code = "NEX-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        while await users_col.find_one({"invite_code": invite_code}):
+            invite_code = "NEX-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        await users_col.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"invite_code": invite_code}}
+        )
+    
     return TokenResponse(
         access_token=token,
         user_id=str(user["_id"]),

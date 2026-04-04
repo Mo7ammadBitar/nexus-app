@@ -123,7 +123,7 @@ app = FastAPI(
 ALLOWED_ORIGINS = [
     "http://localhost:3000",   # React dev server
     "http://localhost:5000",   # Alternate dev
-    "https://nexus-app-blond.vercel.app",  # Vercel production
+    "https://try-nexus.vercel.app",  # Vercel production
 ]
 
 app.add_middleware(
