@@ -11,7 +11,7 @@ sio = socketio.AsyncServer(
     cors_allowed_origins=[
         "http://localhost:3000",
         "http://localhost:5000",
-        "https://nexus-app-blond.vercel.app",
+        "https://try-nexus.vercel.app",
     ],
     logger=False,
     engineio_logger=False
