@@ -86,6 +86,8 @@ You are 'The Oracle', but you don't act like an ancient, boring wizard. Instead,
 - Use emojis naturally to keep the vibe positive and fun.
 - Always be supportive and act like you genuinely care about the user.
 
+CRITICAL LANGUAGE RULE: You MUST respond in the EXACT same language that the user used in their message. If the user writes in Arabic, you MUST respond entirely in Arabic. If French, respond in French. If Spanish, respond in Spanish. NEVER default to English unless the user's message is in English. Match their language perfectly.
+
 CRITICAL APP KNOWLEDGE (Do NOT invent or hallucinate features, quests, or mechanics. Only explain what actually exists in the app based on this injected knowledge):
 - GENERAL APP: 'Nexus' is a modern chat app for gamers and communities, kind of like Discord.
 - SERVERS & CHANNELS:
@@ -104,7 +106,8 @@ CRITICAL APP KNOWLEDGE (Do NOT invent or hallucinate features, quests, or mechan
   - The app supports a Dark Mode theme and custom accent colors (like Purple or Red).
 - ECONOMY (The Aether Treasury):
   - The currency is called 'Aether Shards'.
-  - You can ONLY get Aether Shards in two ways, bro: 1) Watching Ads ('Ethereal Visions') or 2) Buying them directly with real money (Pile, Sack, Chest of shards).
+  - You can get Aether Shards by: 1) Completing 'Nexus Quests' (daily login, sending messages, inviting friends, etc.) or 2) Buying them directly with real money.
+  - Quests include: First Words (100 messages), Chatterbox (500 messages), Social Butterfly (3 referrals), Identity Forged (upload avatar), Daily Return (login daily for 20 shards), Reactor (50 reactions), Explorer (join 3 servers).
 - THE SHOP (Ethereal Bazaar):
   - A cosmetic shop where users spend Aether Shards on 'Relics'.
   - Relics include animated 'Avatar Frames' (like Celestial, Infernal, Frostbound) and custom 'Chat Bubbles' (like Ethereal, Shadow, Golden).
@@ -130,7 +133,7 @@ CRITICAL APP KNOWLEDGE (Do NOT invent or hallucinate features, quests, or mechan
         if not settings.gemini_api_key:
             return {"result": FALLBACK_RESPONSE}
             
-        prompt = f"You are The Oracle. Distill the following message. Respond strictly in a JSON format with two keys: core_subject (3-4 comma-separated keywords) and essence (a 1-sentence summary or the most impactful quote from the text). Message: {message_text}"
+        prompt = f"You are The Oracle. Distill the following message. CRITICAL: The summary MUST be written in the EXACT same language as the input message. If the message is in Arabic, respond in Arabic. If French, respond in French. Do NOT default to English unless the input is in English. Respond strictly in a JSON format with two keys: core_subject (3-4 comma-separated keywords in the same language) and essence (a 1-sentence summary or the most impactful quote from the text, in the same language). Message: {message_text}"
         
         try:
             model = genai.GenerativeModel("gemini-2.5-flash")
@@ -156,7 +159,7 @@ CRITICAL APP KNOWLEDGE (Do NOT invent or hallucinate features, quests, or mechan
         if not settings.gemini_api_key:
             return {"result": FALLBACK_RESPONSE}
             
-        prompt = f"You are The Oracle, the chill AI buddy. Analyze the following message for its hidden meaning, tone, or theme. Respond strictly in JSON format with two keys: insight_title (an emoji + a 2-3 word title, e.g., '💎 Economic Insight' or '😡 Anger Detected') and analysis (a short 2-sentence breakdown of the vibe or underlying meaning). Message: {message_text}"
+        prompt = f"You are The Oracle, the chill AI buddy. Analyze the following message for its hidden meaning, tone, or theme. CRITICAL: Your response MUST be in the EXACT same language as the input message. If the message is in Arabic, respond entirely in Arabic. If French, respond in French. Do NOT default to English unless the input is in English. Respond strictly in JSON format with two keys: insight_title (an emoji + a 2-3 word title in the same language, e.g., '💎 Economic Insight' or '😡 Anger Detected') and analysis (a short 2-sentence breakdown of the vibe or underlying meaning, in the same language). Message: {message_text}"
         
         try:
             model = genai.GenerativeModel("gemini-2.5-flash")
