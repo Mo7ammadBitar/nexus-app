@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { Gamepad2, ArrowLeft, Swords, Trophy, Hexagon, FileText, Scissors } from 'lucide-react';
+import { Gamepad2, ArrowLeft, Swords, Trophy, Hexagon, FileText, Scissors, X, Circle, Grid3x3 } from 'lucide-react';
 import RockPaperScissors from './RockPaperScissors';
+import TicTacToe from './TicTacToe';
 
 const GamingHub = () => {
     const [activeGame, setActiveGame] = useState(null);
 
     if (activeGame === 'rps') {
         return <RockPaperScissors onBack={() => setActiveGame(null)} />;
+    }
+    if (activeGame === 'ttt') {
+        return <TicTacToe onBack={() => setActiveGame(null)} />;
     }
 
     return (
@@ -38,6 +42,21 @@ const GamingHub = () => {
                     <p style={styles.gameDesc}>The classic game, reimagined. Challenge the CPU!</p>
                     <div style={styles.playBadge}>
                         <Swords size={14} style={{ marginRight: 6 }} />
+                        Play Now
+                    </div>
+                </button>
+
+                {/* Tic-Tac-Toe Card */}
+                <button style={styles.gameCard} onClick={() => setActiveGame('ttt')}>
+                    <div style={{ ...styles.gameCardGlow, background: 'linear-gradient(90deg, transparent, #22d3ee, transparent)' }} />
+                    <div style={styles.gameIconWrap}>
+                        <X size={36} strokeWidth={3} color="#fb7185" style={{ filter: 'drop-shadow(0 0 8px rgba(251,113,133,0.7))' }} />
+                        <Circle size={32} strokeWidth={3} color="#22d3ee" style={{ filter: 'drop-shadow(0 0 8px rgba(34,211,238,0.7))' }} />
+                    </div>
+                    <h3 style={styles.gameTitle}>Tic-Tac-Toe</h3>
+                    <p style={styles.gameDesc}>Challenge an unbeatable AI or play it easy!</p>
+                    <div style={{ ...styles.playBadge, background: 'rgba(34,211,238,0.15)', color: '#22d3ee' }}>
+                        <Grid3x3 size={14} style={{ marginRight: 6 }} />
                         Play Now
                     </div>
                 </button>
