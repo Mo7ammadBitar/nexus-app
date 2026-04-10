@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gamepad2, ArrowLeft, Swords, Trophy } from 'lucide-react';
+import { Gamepad2, ArrowLeft, Swords, Trophy, Hexagon, FileText, Scissors } from 'lucide-react';
 import RockPaperScissors from './RockPaperScissors';
 
 const GamingHub = () => {
@@ -30,9 +30,9 @@ const GamingHub = () => {
                 <button style={styles.gameCard} onClick={() => setActiveGame('rps')}>
                     <div style={styles.gameCardGlow} />
                     <div style={styles.gameIconWrap}>
-                        <span style={{ fontSize: 40 }}>🪨</span>
-                        <span style={{ fontSize: 40 }}>📄</span>
-                        <span style={{ fontSize: 40 }}>✂️</span>
+                        <Hexagon size={36} color="#c084fc" style={{ filter: 'drop-shadow(0 0 8px rgba(168,85,247,0.7))' }} />
+                        <FileText size={36} color="#22d3ee" style={{ filter: 'drop-shadow(0 0 8px rgba(34,211,238,0.7))' }} />
+                        <Scissors size={36} color="#fb7185" style={{ filter: 'drop-shadow(0 0 8px rgba(251,113,133,0.7))' }} />
                     </div>
                     <h3 style={styles.gameTitle}>Rock Paper Scissors</h3>
                     <p style={styles.gameDesc}>The classic game, reimagined. Challenge the CPU!</p>

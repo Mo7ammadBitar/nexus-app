@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { ArrowLeft, RotateCcw } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Hexagon, FileText, Scissors, HelpCircle, Loader } from 'lucide-react';
 
 // ── SOUND ENGINE (Web Audio API — no files needed) ──
 const createSoundEngine = () => {
@@ -45,9 +45,24 @@ const createSoundEngine = () => {
     };
 };
 
+// ── ICON CONFIG ──
+const MOVE_ICON_CONFIG = {
+    rock:     { Icon: Hexagon,  color: '#c084fc', glow: 'drop-shadow(0 0 10px rgba(168,85,247,0.8)) drop-shadow(0 0 20px rgba(168,85,247,0.4))' },
+    paper:    { Icon: FileText, color: '#22d3ee', glow: 'drop-shadow(0 0 10px rgba(34,211,238,0.8)) drop-shadow(0 0 20px rgba(34,211,238,0.4))' },
+    scissors: { Icon: Scissors, color: '#fb7185', glow: 'drop-shadow(0 0 10px rgba(251,113,133,0.8)) drop-shadow(0 0 20px rgba(251,113,133,0.4))' },
+};
+
+const MoveIcon = ({ move, size = 34 }) => {
+    if (!move || move === 'waiting') return <HelpCircle size={size} color="rgba(240,240,245,0.3)" />;
+    if (move === 'thinking') return <Loader size={size} color="rgba(240,240,245,0.4)" style={{ animation: 'rpsSpin 1s linear infinite' }} />;
+    const config = MOVE_ICON_CONFIG[move];
+    if (!config) return null;
+    const { Icon, color, glow } = config;
+    return <Icon size={size} color={color} style={{ filter: glow, transition: 'all 0.3s ease' }} />;
+};
+
 // ── GAME LOGIC ──
 const MOVES = ['rock', 'paper', 'scissors'];
-const EMOJIS = { rock: '🪨', paper: '📄', scissors: '✂️' };
 const BEATS = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
 
 const getResult = (p1, p2) => {
@@ -66,8 +81,8 @@ const RockPaperScissors = ({ onBack }) => {
 
     const [score, setScore] = useState({ p1: 0, p2: 0, draws: 0 });
     const [round, setRound] = useState(1);
-    const [p1Choice, setP1Choice] = useState({ emoji: '❓', name: 'Waiting…', state: '' });
-    const [p2Choice, setP2Choice] = useState({ emoji: '❓', name: 'Waiting…', state: '' });
+    const [p1Choice, setP1Choice] = useState({ move: 'waiting', name: 'Waiting…', state: '' });
+    const [p2Choice, setP2Choice] = useState({ move: 'waiting', name: 'Waiting…', state: '' });
     const [resultText, setResultText] = useState('Make your move!');
     const [resultClass, setResultClass] = useState('');
     const [locked, setLocked] = useState(false);
@@ -84,8 +99,8 @@ const RockPaperScissors = ({ onBack }) => {
         sounds.select();
 
         // Thinking state
-        setP1Choice({ emoji: '⏳', name: 'Thinking…', state: '' });
-        setP2Choice({ emoji: '⏳', name: 'Thinking…', state: '' });
+        setP1Choice({ move: 'thinking', name: 'Thinking…', state: '' });
+        setP2Choice({ move: 'thinking', name: 'Thinking…', state: '' });
         setResultText('…');
         setResultClass('');
 
@@ -96,13 +111,13 @@ const RockPaperScissors = ({ onBack }) => {
         const p1State = result === 'win' ? 'win' : result === 'lose' ? 'lose' : 'draw';
         const p2State = result === 'lose' ? 'win' : result === 'win' ? 'lose' : 'draw';
 
-        setP1Choice({ emoji: EMOJIS[move], name: capitalize(move), state: p1State });
-        setP2Choice({ emoji: EMOJIS[cpuMove], name: capitalize(cpuMove), state: p2State });
+        setP1Choice({ move: move, name: capitalize(move), state: p1State });
+        setP2Choice({ move: cpuMove, name: capitalize(cpuMove), state: p2State });
 
         const resultTexts = {
-            win: '🎉 You Win!',
-            lose: '💀 You Lose!',
-            draw: '🤝 Draw!',
+            win: '▲ YOU WIN',
+            lose: '▼ YOU LOSE',
+            draw: '═ DRAW',
         };
         setResultText(resultTexts[result]);
         setResultClass(result);
@@ -125,7 +140,7 @@ const RockPaperScissors = ({ onBack }) => {
 
         // Recent rounds
         setRecentRounds(prev => [
-            { p1: EMOJIS[move], p2: EMOJIS[cpuMove], result, round },
+            { p1: move, p2: cpuMove, result, round },
             ...prev,
         ].slice(0, 5));
 
@@ -139,8 +154,8 @@ const RockPaperScissors = ({ onBack }) => {
     const handleReset = () => {
         setScore({ p1: 0, p2: 0, draws: 0 });
         setRound(1);
-        setP1Choice({ emoji: '❓', name: 'Waiting…', state: '' });
-        setP2Choice({ emoji: '❓', name: 'Waiting…', state: '' });
+        setP1Choice({ move: 'waiting', name: 'Waiting…', state: '' });
+        setP2Choice({ move: 'waiting', name: 'Waiting…', state: '' });
         setResultText('Make your move!');
         setResultClass('');
         setRecentRounds([]);
@@ -210,7 +225,9 @@ const RockPaperScissors = ({ onBack }) => {
             <div style={s.arena}>
                 <div style={s.arenaSide}>
                     <div style={{ ...s.choiceDisplay, ...stateStyle(p1Choice.state) }}>
-                        <span style={s.choiceEmoji}>{p1Choice.emoji}</span>
+                        <div style={s.choiceIconWrap}>
+                            <MoveIcon move={p1Choice.move} size={64} />
+                        </div>
                         <span style={s.choiceName}>{p1Choice.name}</span>
                     </div>
                 </div>
@@ -224,7 +241,9 @@ const RockPaperScissors = ({ onBack }) => {
 
                 <div style={s.arenaSide}>
                     <div style={{ ...s.choiceDisplay, ...stateStyle(p2Choice.state) }}>
-                        <span style={s.choiceEmoji}>{p2Choice.emoji}</span>
+                        <div style={s.choiceIconWrap}>
+                            <MoveIcon move={p2Choice.move} size={64} />
+                        </div>
                         <span style={s.choiceName}>{p2Choice.name}</span>
                     </div>
                 </div>
@@ -243,7 +262,9 @@ const RockPaperScissors = ({ onBack }) => {
                         onClick={() => handleMove(move)}
                         disabled={locked}
                     >
-                        <span style={s.moveEmoji}>{EMOJIS[move]}</span>
+                        <div style={s.moveBtnIconWrap}>
+                            <MoveIcon move={move} size={34} />
+                        </div>
                         <span style={s.moveLabel}>{move.toUpperCase()}</span>
                     </button>
                 ))}
@@ -259,7 +280,11 @@ const RockPaperScissors = ({ onBack }) => {
                         recentRounds.map((rr, i) => (
                             <div key={i} style={s.rrItem}>
                                 <span style={s.rrNum}>#{rr.round}</span>
-                                <span style={s.rrMoves}>{rr.p1} vs {rr.p2}</span>
+                                <span style={s.rrMoves}>
+                                    <MoveIcon move={rr.p1} size={20} />
+                                    <span style={{ color: 'rgba(240,240,245,0.3)', margin: '0 6px', fontSize: 11 }}>vs</span>
+                                    <MoveIcon move={rr.p2} size={20} />
+                                </span>
                                 <span style={{ ...s.rrResult, ...resultBadgeColor(rr.result) }}>
                                     {rr.result.toUpperCase()}
                                 </span>
@@ -421,10 +446,11 @@ const s = {
         minWidth: 140,
         transition: 'all 0.3s ease',
     },
-    choiceEmoji: {
-        fontSize: 52,
-        lineHeight: 1,
-        filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))',
+    choiceIconWrap: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 64,
     },
     choiceName: {
         fontSize: 13,
@@ -493,9 +519,11 @@ const s = {
         opacity: 0.4,
         cursor: 'not-allowed',
     },
-    moveEmoji: {
-        fontSize: 34,
-        filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.3))',
+    moveBtnIconWrap: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 34,
     },
     moveLabel: {
         fontSize: 12,
@@ -549,9 +577,9 @@ const s = {
         textAlign: 'right',
     },
     rrMoves: {
-        fontSize: 16,
+        display: 'flex',
+        alignItems: 'center',
         flex: 1,
-        fontFamily: 'monospace',
     },
     rrResult: {
         fontWeight: 700,
@@ -567,7 +595,7 @@ const s = {
 if (typeof document !== 'undefined' && !document.querySelector('[data-rps-styles]')) {
     const tag = document.createElement('style');
     tag.setAttribute('data-rps-styles', '');
-    tag.textContent = `@keyframes rpsFlash { 0% { opacity: 1; } 100% { opacity: 0; } }`;
+    tag.textContent = `@keyframes rpsFlash { 0% { opacity: 1; } 100% { opacity: 0; } } @keyframes rpsSpin { to { transform: rotate(360deg); } }`;
     document.head.appendChild(tag);
 }
 
