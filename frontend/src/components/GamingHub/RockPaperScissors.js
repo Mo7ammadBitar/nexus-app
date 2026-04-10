@@ -1,0 +1,574 @@
+import React, { useState, useRef, useCallback } from 'react';
+import { ArrowLeft, RotateCcw } from 'lucide-react';
+
+// ── SOUND ENGINE (Web Audio API — no files needed) ──
+const createSoundEngine = () => {
+    let ctx = null;
+    const getCtx = () => {
+        if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+        return ctx;
+    };
+    const tone = ({ freq = 440, type = 'sine', vol = 0.3, dur = 0.15, attack = 0.005 }) => {
+        try {
+            const ac = getCtx();
+            const osc = ac.createOscillator();
+            const gain = ac.createGain();
+            osc.connect(gain);
+            gain.connect(ac.destination);
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, ac.currentTime);
+            gain.gain.setValueAtTime(0, ac.currentTime);
+            gain.gain.linearRampToValueAtTime(vol, ac.currentTime + attack);
+            gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+            osc.start(ac.currentTime);
+            osc.stop(ac.currentTime + dur + 0.01);
+        } catch (e) { /* silent */ }
+    };
+    return {
+        select: () => {
+            tone({ freq: 880, type: 'sine', vol: 0.2, dur: 0.1 });
+            setTimeout(() => tone({ freq: 1100, type: 'sine', vol: 0.15, dur: 0.08 }), 60);
+        },
+        win: () => {
+            [523, 659, 784, 1047].forEach((f, i) =>
+                setTimeout(() => tone({ freq: f, vol: 0.25, dur: 0.2, type: 'triangle' }), i * 80)
+            );
+        },
+        lose: () => {
+            tone({ freq: 330, type: 'sawtooth', vol: 0.2, dur: 0.15 });
+            setTimeout(() => tone({ freq: 220, type: 'sawtooth', vol: 0.2, dur: 0.2 }), 100);
+            setTimeout(() => tone({ freq: 165, type: 'sawtooth', vol: 0.15, dur: 0.3 }), 200);
+        },
+        draw: () => {
+            tone({ freq: 440, type: 'sine', vol: 0.18, dur: 0.25 });
+        },
+    };
+};
+
+// ── GAME LOGIC ──
+const MOVES = ['rock', 'paper', 'scissors'];
+const EMOJIS = { rock: '🪨', paper: '📄', scissors: '✂️' };
+const BEATS = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
+
+const getResult = (p1, p2) => {
+    if (p1 === p2) return 'draw';
+    return BEATS[p1] === p2 ? 'win' : 'lose';
+};
+
+const getCpuMove = () => MOVES[Math.floor(Math.random() * 3)];
+
+const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+const RockPaperScissors = ({ onBack }) => {
+    const soundsRef = useRef(null);
+    if (!soundsRef.current) soundsRef.current = createSoundEngine();
+    const sounds = soundsRef.current;
+
+    const [score, setScore] = useState({ p1: 0, p2: 0, draws: 0 });
+    const [round, setRound] = useState(1);
+    const [p1Choice, setP1Choice] = useState({ emoji: '❓', name: 'Waiting…', state: '' });
+    const [p2Choice, setP2Choice] = useState({ emoji: '❓', name: 'Waiting…', state: '' });
+    const [resultText, setResultText] = useState('Make your move!');
+    const [resultClass, setResultClass] = useState('');
+    const [locked, setLocked] = useState(false);
+    const [selectedMove, setSelectedMove] = useState(null);
+    const [recentRounds, setRecentRounds] = useState([]);
+    const [flashClass, setFlashClass] = useState('');
+
+    const capitalize = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
+
+    const handleMove = useCallback(async (move) => {
+        if (locked) return;
+        setLocked(true);
+        setSelectedMove(move);
+        sounds.select();
+
+        // Thinking state
+        setP1Choice({ emoji: '⏳', name: 'Thinking…', state: '' });
+        setP2Choice({ emoji: '⏳', name: 'Thinking…', state: '' });
+        setResultText('…');
+        setResultClass('');
+
+        await delay(400);
+
+        const cpuMove = getCpuMove();
+        const result = getResult(move, cpuMove);
+        const p1State = result === 'win' ? 'win' : result === 'lose' ? 'lose' : 'draw';
+        const p2State = result === 'lose' ? 'win' : result === 'win' ? 'lose' : 'draw';
+
+        setP1Choice({ emoji: EMOJIS[move], name: capitalize(move), state: p1State });
+        setP2Choice({ emoji: EMOJIS[cpuMove], name: capitalize(cpuMove), state: p2State });
+
+        const resultTexts = {
+            win: '🎉 You Win!',
+            lose: '💀 You Lose!',
+            draw: '🤝 Draw!',
+        };
+        setResultText(resultTexts[result]);
+        setResultClass(result);
+
+        // Sound
+        if (result === 'win') sounds.win();
+        else if (result === 'lose') sounds.lose();
+        else sounds.draw();
+
+        // Flash
+        setFlashClass(result);
+        setTimeout(() => setFlashClass(''), 400);
+
+        // Score
+        setScore(prev => ({
+            p1: prev.p1 + (result === 'win' ? 1 : 0),
+            p2: prev.p2 + (result === 'lose' ? 1 : 0),
+            draws: prev.draws + (result === 'draw' ? 1 : 0),
+        }));
+
+        // Recent rounds
+        setRecentRounds(prev => [
+            { p1: EMOJIS[move], p2: EMOJIS[cpuMove], result, round },
+            ...prev,
+        ].slice(0, 5));
+
+        setRound(r => r + 1);
+
+        await delay(600);
+        setSelectedMove(null);
+        setLocked(false);
+    }, [locked, round, sounds]);
+
+    const handleReset = () => {
+        setScore({ p1: 0, p2: 0, draws: 0 });
+        setRound(1);
+        setP1Choice({ emoji: '❓', name: 'Waiting…', state: '' });
+        setP2Choice({ emoji: '❓', name: 'Waiting…', state: '' });
+        setResultText('Make your move!');
+        setResultClass('');
+        setRecentRounds([]);
+        setSelectedMove(null);
+        setLocked(false);
+    };
+
+    const stateStyle = (state) => {
+        if (state === 'win') return { borderColor: '#39d98a', boxShadow: '0 0 24px rgba(57,217,138,0.3)', background: 'rgba(57,217,138,0.05)' };
+        if (state === 'lose') return { borderColor: '#ff4f7b', boxShadow: '0 0 24px rgba(255,79,123,0.3)', background: 'rgba(255,79,123,0.05)' };
+        if (state === 'draw') return { borderColor: '#ffca40', boxShadow: '0 0 20px rgba(255,202,64,0.25)' };
+        return {};
+    };
+
+    const bannerStyle = () => {
+        if (resultClass === 'win') return { background: 'rgba(57,217,138,0.12)', borderColor: '#39d98a' };
+        if (resultClass === 'lose') return { background: 'rgba(255,79,123,0.12)', borderColor: '#ff4f7b' };
+        if (resultClass === 'draw') return { background: 'rgba(255,202,64,0.12)', borderColor: '#ffca40' };
+        return {};
+    };
+    const bannerTextColor = () => {
+        if (resultClass === 'win') return '#39d98a';
+        if (resultClass === 'lose') return '#ff4f7b';
+        if (resultClass === 'draw') return '#ffca40';
+        return 'rgba(240,240,245,0.55)';
+    };
+
+    const resultBadgeColor = (r) => {
+        if (r === 'win') return { background: 'rgba(57,217,138,0.15)', color: '#39d98a' };
+        if (r === 'lose') return { background: 'rgba(255,79,123,0.15)', color: '#ff4f7b' };
+        return { background: 'rgba(255,202,64,0.15)', color: '#ffca40' };
+    };
+
+    return (
+        <div style={s.container}>
+            {/* Flash Overlay */}
+            {flashClass && <div style={{ ...s.flash, ...(flashClass === 'win' ? s.flashWin : flashClass === 'lose' ? s.flashLose : s.flashDraw) }} />}
+
+            {/* Header */}
+            <div style={s.header}>
+                <button style={s.backBtn} onClick={onBack}>
+                    <ArrowLeft size={16} style={{ marginRight: 6 }} /> Back
+                </button>
+                <div style={s.modeBadge}>vs Computer</div>
+                <button style={s.resetBtn} onClick={handleReset}>
+                    <RotateCcw size={14} style={{ marginRight: 6 }} /> Reset
+                </button>
+            </div>
+
+            {/* Scoreboard */}
+            <div style={s.scoreboard}>
+                <div style={s.scoreBlock}>
+                    <span style={s.scoreLabel}>YOU</span>
+                    <span style={{ ...s.scoreNum, color: '#39d98a' }}>{score.p1}</span>
+                </div>
+                <div style={s.scoreCenter}>
+                    <div style={s.roundBadge}>Round {round}</div>
+                    <div style={s.drawsText}>Draws: {score.draws}</div>
+                </div>
+                <div style={s.scoreBlock}>
+                    <span style={s.scoreLabel}>CPU</span>
+                    <span style={{ ...s.scoreNum, color: '#ff4f7b' }}>{score.p2}</span>
+                </div>
+            </div>
+
+            {/* Arena */}
+            <div style={s.arena}>
+                <div style={s.arenaSide}>
+                    <div style={{ ...s.choiceDisplay, ...stateStyle(p1Choice.state) }}>
+                        <span style={s.choiceEmoji}>{p1Choice.emoji}</span>
+                        <span style={s.choiceName}>{p1Choice.name}</span>
+                    </div>
+                </div>
+
+                <div style={s.arenaVs}>
+                    <div style={s.vsText}>VS</div>
+                    <div style={{ ...s.resultBanner, ...bannerStyle() }}>
+                        <span style={{ ...s.resultText, color: bannerTextColor() }}>{resultText}</span>
+                    </div>
+                </div>
+
+                <div style={s.arenaSide}>
+                    <div style={{ ...s.choiceDisplay, ...stateStyle(p2Choice.state) }}>
+                        <span style={s.choiceEmoji}>{p2Choice.emoji}</span>
+                        <span style={s.choiceName}>{p2Choice.name}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Move Buttons */}
+            <div style={s.moveButtons}>
+                {MOVES.map(move => (
+                    <button
+                        key={move}
+                        style={{
+                            ...s.moveBtn,
+                            ...(selectedMove === move ? s.moveBtnSelected : {}),
+                            ...(locked ? s.moveBtnDisabled : {}),
+                        }}
+                        onClick={() => handleMove(move)}
+                        disabled={locked}
+                    >
+                        <span style={s.moveEmoji}>{EMOJIS[move]}</span>
+                        <span style={s.moveLabel}>{move.toUpperCase()}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Recent Rounds */}
+            <div style={s.recentRounds}>
+                <div style={s.rrTitle}>RECENT ROUNDS</div>
+                <div style={s.rrList}>
+                    {recentRounds.length === 0 ? (
+                        <div style={s.rrEmpty}>No rounds yet — make your move!</div>
+                    ) : (
+                        recentRounds.map((rr, i) => (
+                            <div key={i} style={s.rrItem}>
+                                <span style={s.rrNum}>#{rr.round}</span>
+                                <span style={s.rrMoves}>{rr.p1} vs {rr.p2}</span>
+                                <span style={{ ...s.rrResult, ...resultBadgeColor(rr.result) }}>
+                                    {rr.result.toUpperCase()}
+                                </span>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ── STYLES ──
+const s = {
+    container: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#0d0d0f',
+        overflow: 'auto',
+        position: 'relative',
+        fontFamily: "'Inter', sans-serif",
+    },
+    flash: {
+        position: 'fixed',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 400,
+        animation: 'rpsFlash 0.4s ease forwards',
+    },
+    flashWin: { background: 'rgba(57,217,138,0.08)' },
+    flashLose: { background: 'rgba(255,79,123,0.08)' },
+    flashDraw: { background: 'rgba(255,202,64,0.08)' },
+
+    // Header
+    header: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '14px 20px',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        background: '#16161a',
+        flexShrink: 0,
+    },
+    backBtn: {
+        display: 'flex',
+        alignItems: 'center',
+        fontSize: 13,
+        fontWeight: 600,
+        padding: '7px 14px',
+        borderRadius: 8,
+        border: '1px solid rgba(255,255,255,0.14)',
+        background: '#1e1e24',
+        color: 'rgba(240,240,245,0.55)',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+    },
+    resetBtn: {
+        display: 'flex',
+        alignItems: 'center',
+        fontSize: 13,
+        fontWeight: 600,
+        padding: '7px 14px',
+        borderRadius: 8,
+        border: '1px solid rgba(255,255,255,0.14)',
+        background: '#1e1e24',
+        color: 'rgba(240,240,245,0.55)',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+    },
+    modeBadge: {
+        fontSize: 12,
+        fontWeight: 700,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        color: '#e8ff47',
+        background: 'rgba(232,255,71,0.1)',
+        padding: '6px 14px',
+        borderRadius: 99,
+        border: '1px solid rgba(232,255,71,0.3)',
+    },
+
+    // Scoreboard
+    scoreboard: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '20px 32px',
+        background: '#16161a',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        flexShrink: 0,
+    },
+    scoreBlock: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 4,
+        minWidth: 80,
+    },
+    scoreLabel: {
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        color: 'rgba(240,240,245,0.55)',
+    },
+    scoreNum: {
+        fontSize: 42,
+        fontWeight: 800,
+        fontFamily: "'DM Mono', monospace, monospace",
+        lineHeight: 1,
+        color: '#f0f0f5',
+    },
+    scoreCenter: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 6,
+    },
+    roundBadge: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: '#f0f0f5',
+        background: '#26262e',
+        padding: '5px 12px',
+        borderRadius: 99,
+        letterSpacing: '0.05em',
+    },
+    drawsText: {
+        fontSize: 11,
+        color: 'rgba(240,240,245,0.3)',
+        fontFamily: 'monospace',
+    },
+
+    // Arena
+    arena: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '24px 32px',
+        flexShrink: 0,
+        background: '#0d0d0f',
+        gap: 16,
+    },
+    arenaSide: {
+        flex: 1,
+        display: 'flex',
+        justifyContent: 'center',
+    },
+    choiceDisplay: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 10,
+        padding: 24,
+        background: '#16161a',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 28,
+        minWidth: 140,
+        transition: 'all 0.3s ease',
+    },
+    choiceEmoji: {
+        fontSize: 52,
+        lineHeight: 1,
+        filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))',
+    },
+    choiceName: {
+        fontSize: 13,
+        fontWeight: 600,
+        color: 'rgba(240,240,245,0.55)',
+        textTransform: 'capitalize',
+        letterSpacing: '0.05em',
+    },
+    arenaVs: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 10,
+        flexShrink: 0,
+    },
+    vsText: {
+        fontSize: 18,
+        fontWeight: 800,
+        color: 'rgba(240,240,245,0.3)',
+        letterSpacing: '0.1em',
+    },
+    resultBanner: {
+        minWidth: 140,
+        textAlign: 'center',
+        padding: '10px 16px',
+        borderRadius: 99,
+        background: '#1e1e24',
+        border: '1px solid rgba(255,255,255,0.08)',
+        transition: 'all 0.3s ease',
+    },
+    resultText: {
+        fontSize: 13,
+        fontWeight: 700,
+        letterSpacing: '0.05em',
+    },
+
+    // Move Buttons
+    moveButtons: {
+        display: 'flex',
+        justifyContent: 'center',
+        gap: 16,
+        padding: '20px 24px',
+        flexShrink: 0,
+        background: '#0d0d0f',
+    },
+    moveBtn: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 8,
+        padding: '20px 28px',
+        background: '#16161a',
+        border: '2px solid rgba(255,255,255,0.08)',
+        borderRadius: 20,
+        minWidth: 100,
+        cursor: 'pointer',
+        transition: 'all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        color: 'inherit',
+    },
+    moveBtnSelected: {
+        borderColor: '#e8ff47',
+        background: 'rgba(232,255,71,0.06)',
+        boxShadow: '0 0 24px rgba(232,255,71,0.25)',
+    },
+    moveBtnDisabled: {
+        opacity: 0.4,
+        cursor: 'not-allowed',
+    },
+    moveEmoji: {
+        fontSize: 34,
+        filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.3))',
+    },
+    moveLabel: {
+        fontSize: 12,
+        fontWeight: 700,
+        letterSpacing: '0.08em',
+        color: 'rgba(240,240,245,0.55)',
+    },
+
+    // Recent Rounds
+    recentRounds: {
+        flexShrink: 0,
+        padding: '0 24px 20px',
+        background: '#0d0d0f',
+    },
+    rrTitle: {
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: '0.15em',
+        color: 'rgba(240,240,245,0.3)',
+        marginBottom: 10,
+        paddingLeft: 4,
+    },
+    rrList: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        maxHeight: 120,
+        overflowY: 'auto',
+    },
+    rrEmpty: {
+        fontSize: 12,
+        color: 'rgba(240,240,245,0.3)',
+        textAlign: 'center',
+        padding: 16,
+    },
+    rrItem: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 14px',
+        background: '#16161a',
+        borderRadius: 8,
+        border: '1px solid rgba(255,255,255,0.08)',
+        fontSize: 12,
+    },
+    rrNum: {
+        fontSize: 10,
+        color: 'rgba(240,240,245,0.3)',
+        fontFamily: 'monospace',
+        minWidth: 20,
+        textAlign: 'right',
+    },
+    rrMoves: {
+        fontSize: 16,
+        flex: 1,
+        fontFamily: 'monospace',
+    },
+    rrResult: {
+        fontWeight: 700,
+        fontSize: 11,
+        letterSpacing: '0.05em',
+        padding: '3px 8px',
+        borderRadius: 99,
+        textTransform: 'uppercase',
+    },
+};
+
+// Inject keyframes
+if (typeof document !== 'undefined' && !document.querySelector('[data-rps-styles]')) {
+    const tag = document.createElement('style');
+    tag.setAttribute('data-rps-styles', '');
+    tag.textContent = `@keyframes rpsFlash { 0% { opacity: 1; } 100% { opacity: 0; } }`;
+    document.head.appendChild(tag);
+}
+
+export default RockPaperScissors;

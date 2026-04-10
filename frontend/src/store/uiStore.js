@@ -18,6 +18,9 @@ export const useUIStore = create((set) => ({
     showPrimeScreen: false,
     setShowPrimeScreen: (show) => set({ showPrimeScreen: show }),
 
+    showGamingHub: false,
+    setShowGamingHub: (show) => set({ showGamingHub: show }),
+
     // Global Error State (fallback for general app errors without boundaries)
     globalError: null,
     setGlobalError: (error) => set({ globalError: error }),

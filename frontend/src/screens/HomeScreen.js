@@ -46,6 +46,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { initPresence, disconnectChatSocket } from '../services/socket';
 import { resolveAssetUrl } from '../config';
 import NexusPrimeScreen from '../components/Prime/NexusPrimeScreen';
+import GamingHub from '../components/GamingHub/GamingHub';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 const HomeScreen = () => {
@@ -53,7 +54,7 @@ const HomeScreen = () => {
     const { user, logout } = useAuthStore();
     const { currentServer, selectServer, selectChannel, fetchServers } = useServerStore();
     const { currentDMFriend, openDM, openDMById, closeDM, fetchFriends } = useFriendsStore();
-    const { showFriendsPanel: showFriendsMode, setShowFriendsPanel: setShowFriendsMode, isProfileModalOpen: showProfile, setProfileModalOpen: setShowProfile, mobileView, setMobileView, showPrimeScreen, setShowPrimeScreen } = useUIStore();
+    const { showFriendsPanel: showFriendsMode, setShowFriendsPanel: setShowFriendsMode, isProfileModalOpen: showProfile, setProfileModalOpen: setShowProfile, mobileView, setMobileView, showPrimeScreen, setShowPrimeScreen, showGamingHub, setShowGamingHub } = useUIStore();
     const [showMembers, setShowMembers] = useState(true);
     const location = useLocation();
     const [showServerSettings, setShowServerSettings] = useState(false);
@@ -128,6 +129,7 @@ const HomeScreen = () => {
         useServerStore.getState().clearServer();
         setShowFriendsMode(true);
         setShowPrimeScreen(false);
+        setShowGamingHub(false);
         fetchFriends();
         navigate('/');
     };
@@ -137,6 +139,7 @@ const HomeScreen = () => {
         useServerStore.getState().clearServer();
         closeDM();
         setShowFriendsMode(false);
+        setShowGamingHub(false);
         setShowPrimeScreen(true);
     };
 
@@ -287,6 +290,8 @@ const HomeScreen = () => {
             <View style={[styles.mainArea, isMobile && { flex: 1, width: '100vw' }]}>
                 {showPrimeScreen ? (
                     <NexusPrimeScreen />
+                ) : showGamingHub ? (
+                    <GamingHub />
                 ) : isDMMode ? (
                     <ErrorBoundary>
                         <DirectMessageArea />

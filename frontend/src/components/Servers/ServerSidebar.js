@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 
 import { useServerStore } from '../../store/serverStore';
 import { useFriendsStore } from '../../store/friendsStore';
 import { useUIStore } from '../../store/uiStore';
-import { Search, Users, Plus, Sparkles, Link, ShoppingBag, Crown } from 'lucide-react';
+import { Search, Users, Plus, Sparkles, Link, ShoppingBag, Crown, Gamepad2 } from 'lucide-react';
 import GlobalSearch from '../Search/GlobalSearch';
 import EtherealShop from '../Shop/EtherealShop';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +18,7 @@ const ServerSidebar = ({ onOpenFriends, onOpenPrime }) => {
     const [inviteCode, setInviteCode] = useState('');
     const [error, setError] = useState('');
     const [showSearch, setShowSearch] = useState(false);
-    const { isShopOpen: showShop, setShopOpen: setShowShop } = useUIStore();
+    const { isShopOpen: showShop, setShopOpen: setShowShop, setShowGamingHub, setShowPrimeScreen } = useUIStore();
 
     // Fetch pending requests and unread counts on mount
     useEffect(() => {
@@ -154,6 +154,22 @@ const ServerSidebar = ({ onOpenFriends, onOpenPrime }) => {
                     title="Ethereal Shop"
                 >
                     <ShoppingBag size={24} color="#f59e0b" />
+                </TouchableOpacity>
+
+                <div style={StyleSheet.flatten(styles.separator)} />
+
+                {/* Gaming Hub Button */}
+                <TouchableOpacity
+                    style={styles.gamingIcon}
+                    onPress={() => {
+                        useServerStore.getState().clearServer();
+                        useFriendsStore.getState().closeDM();
+                        setShowPrimeScreen(false);
+                        setShowGamingHub(true);
+                    }}
+                    title="Gaming Hub"
+                >
+                    <Gamepad2 size={24} color="#22c55e" />
                 </TouchableOpacity>
 
                 <div style={StyleSheet.flatten(styles.separator)} />
@@ -493,6 +509,19 @@ const styles = StyleSheet.create({
         transition: 'all 0.2s ease',
         borderWidth: 1,
         borderColor: 'rgba(168, 85, 247, 0.2)',
+    },
+    gamingIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(34, 197, 94, 0.12)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        borderWidth: 1,
+        borderColor: 'rgba(34, 197, 94, 0.2)',
     },
     modalOverlay: {
         position: 'fixed',

@@ -42,6 +42,7 @@ export const useServerStore = create((set, get) => ({
             const { useUIStore } = require('./uiStore');
             useUIStore.getState().setShowPrimeScreen(false);
             useUIStore.getState().setShowFriendsPanel(false);
+            useUIStore.getState().setShowGamingHub(false);
         } catch (e) {
             // Ignore if uiStore not available
         }
