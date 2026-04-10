@@ -5,7 +5,7 @@ import { useFriendsStore } from '../../store/friendsStore';
 import { useVoiceStore } from '../../store/voiceStore';
 import { useTypingStore } from '../../store/typingStore';
 import { useAuthStore } from '../../store/authStore';
-import { dmAPI, starredAPI, oracleAPI, ORACLE_ID } from '../../services/api';
+import { dmAPI, starredAPI, oracleAPI, ORACLE_ID, gamesAPI } from '../../services/api';
 import { startDMTyping, stopDMTyping } from '../../services/socket';
 import MarkdownText from '../Chat/MarkdownText';
 import VoiceMessagePlayer from '../Chat/VoiceMessagePlayer';
@@ -18,8 +18,10 @@ const DMVoiceCall = lazy(() => import('../Chat/DMVoiceCall'));
 const MemberProfile = lazy(() => import('../Profile/MemberProfile'));
 import { copyToClipboard } from '../../utils/messageLinkUtils';
 import { initiateDMCall, cancelDMCall } from '../../services/socket';
-import { Smile, SmilePlus, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Sparkles, Eye, X, Pin, Phone, PhoneOff, ArrowLeft } from 'lucide-react';
+import { Smile, SmilePlus, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Sparkles, Eye, X, Pin, Phone, PhoneOff, ArrowLeft, Gamepad2 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
+import GameInviteCard from '../GamingHub/GameInviteCard';
+import ChallengeModal from '../GamingHub/ChallengeModal';
 import { getAuraRingStyle, getAuraNameStyle, injectAuraAnimations } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
 import { useTranslation } from 'react-i18next';
@@ -87,11 +89,14 @@ const DirectMessageArea = () => {
         deleteDMMessage,
         pinMessage,
         unpinMessage,
-        closeDM
+        closeDM,
+        gameChallenges,
+        updateGameChallenge,
     } = useFriendsStore();
     const { user } = useAuthStore();
     const [message, setMessage] = useState('');
     const [sending, setSending] = useState(false);
+    const [showChallengeModal, setShowChallengeModal] = useState(false);
     const [hoveredMessageId, setHoveredMessageId] = useState(null);
     const [editingMessageId, setEditingMessageId] = useState(null);
     const [editContent, setEditContent] = useState('');
@@ -710,6 +715,14 @@ const DirectMessageArea = () => {
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                        style={{ padding: 8, marginInlineEnd: 8 }}
+                        onPress={() => setShowChallengeModal(true)}
+                        title="Game Challenge"
+                    >
+                        <Gamepad2 size={24} color="#4ade80" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                         style={{ padding: 8, marginInlineEnd: 16 }}
                         onPress={() => setShowPinnedMessages(!showPinnedMessages)}
                         title={t('dm.btn_pinned', 'Pinned Messages')}
@@ -1117,6 +1130,44 @@ const DirectMessageArea = () => {
                 )}
             </ScrollView >
 
+            {/* Game Challenge Cards */}
+            {gameChallenges.length > 0 && (
+                <div style={{ padding: '8px 16px', background: 'var(--bg-primary)' }}>
+                    {gameChallenges.map(challenge => {
+                        const isOpponent = challenge.opponent_id === user?._id;
+                        const gameLabel = challenge.game_type === 'tic-tac-toe' ? 'Tic-Tac-Toe' : 'Rock Paper Scissors';
+                        return (
+                            <div key={challenge._id} style={{ marginBottom: 8 }}>
+                                <GameInviteCard
+                                    challengerName={challenge.challenger_name}
+                                    gameName={gameLabel}
+                                    wagerText={challenge.wager_text}
+                                    status={challenge.status}
+                                    onAccept={async () => {
+                                        try {
+                                            await gamesAPI.acceptChallenge(challenge._id);
+                                            updateGameChallenge(challenge._id, { status: 'accepted' });
+                                        } catch (err) {
+                                            const msg = err.response?.data?.detail || 'Failed to accept.';
+                                            toast.error(msg);
+                                        }
+                                    }}
+                                    onDecline={async () => {
+                                        try {
+                                            await gamesAPI.declineChallenge(challenge._id);
+                                            updateGameChallenge(challenge._id, { status: 'declined' });
+                                        } catch (err) {
+                                            const msg = err.response?.data?.detail || 'Failed to decline.';
+                                            toast.error(msg);
+                                        }
+                                    }}
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
             {/* Input */}
             {/* File Preview */}
             {
@@ -1358,6 +1409,14 @@ const DirectMessageArea = () => {
                     </View>
                 </View>
             )}
+
+            {/* Challenge Modal */}
+            <ChallengeModal
+                isOpen={showChallengeModal}
+                onClose={() => setShowChallengeModal(false)}
+                friendId={currentDMFriend?.id || currentDMFriend?._id}
+                friendName={currentDMFriend?.display_name || currentDMFriend?.username}
+            />
 
         </View >
     );

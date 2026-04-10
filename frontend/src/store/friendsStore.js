@@ -15,6 +15,20 @@ export const useFriendsStore = create((set, get) => ({
     unreadCounts: {},  // { friendId: count }
     totalUnread: 0,
 
+    // Game challenge state
+    gameChallenges: [],  // array of challenge objects in the current DM
+    addGameChallenge: (challenge) => set(state => {
+        const exists = state.gameChallenges.some(c => c._id === challenge._id);
+        if (exists) return {};
+        return { gameChallenges: [...state.gameChallenges, challenge] };
+    }),
+    updateGameChallenge: (challengeId, updates) => set(state => ({
+        gameChallenges: state.gameChallenges.map(c =>
+            c._id === challengeId ? { ...c, ...updates } : c
+        ),
+    })),
+    clearGameChallenges: () => set({ gameChallenges: [] }),
+
     // Fetch all friends
     fetchFriends: async () => {
         set({ isLoading: true });
@@ -295,7 +309,7 @@ export const useFriendsStore = create((set, get) => ({
 
     // Close DM
     closeDM: () => {
-        set({ currentDMFriend: null, dmMessages: [], pinnedMessages: [] });
+        set({ currentDMFriend: null, dmMessages: [], pinnedMessages: [], gameChallenges: [] });
     },
 
     // Clear friends panel state
@@ -389,6 +403,49 @@ export const useFriendsStore = create((set, get) => ({
             showNativeNotification(
                 "New Friend Request",
                 "Someone wants to connect with you on Nexus!",
+                { skipFocusCheck: true }
+            );
+        });
+
+        // 3. LISTENER FOR GAME CHALLENGES
+        socket.off('game:challenge_received');
+        socket.on('game:challenge_received', (challenge) => {
+            console.log('🎮 Game challenge received:', challenge);
+            const state = get();
+            // If DM with challenger is open, inject into challenges
+            const isCurrentChat = state.currentDMFriend &&
+                (state.currentDMFriend._id === challenge.challenger_id ||
+                    state.currentDMFriend.id === challenge.challenger_id);
+            if (isCurrentChat) {
+                get().addGameChallenge(challenge);
+            }
+            // Show notification
+            const gameLabel = challenge.game_type === 'tic-tac-toe' ? 'Tic-Tac-Toe' : 'Rock Paper Scissors';
+            showNativeNotification(
+                `Game Challenge from ${challenge.challenger_name}`,
+                `${challenge.challenger_name} challenged you to ${gameLabel}!`,
+                { skipFocusCheck: true }
+            );
+        });
+
+        socket.off('game:challenge_accepted');
+        socket.on('game:challenge_accepted', (challenge) => {
+            console.log('🎮 Challenge accepted:', challenge);
+            get().updateGameChallenge(challenge._id, { status: 'accepted' });
+            showNativeNotification(
+                'Challenge Accepted!',
+                `${challenge.opponent_name} accepted your challenge!`,
+                { skipFocusCheck: true }
+            );
+        });
+
+        socket.off('game:challenge_declined');
+        socket.on('game:challenge_declined', (challenge) => {
+            console.log('🎮 Challenge declined:', challenge);
+            get().updateGameChallenge(challenge._id, { status: 'declined' });
+            showNativeNotification(
+                'Challenge Declined',
+                `${challenge.opponent_name} declined your challenge.`,
                 { skipFocusCheck: true }
             );
         });

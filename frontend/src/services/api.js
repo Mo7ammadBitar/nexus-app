@@ -293,4 +293,12 @@ export const supportAPI = {
     getAdminTickets: () => api.get('/support/admin/tickets'),
 };
 
+// Game Challenges API
+export const gamesAPI = {
+    sendChallenge: (opponentId, gameType, wagerText = '') =>
+        api.post('/games/challenge', { opponent_id: opponentId, game_type: gameType, wager_text: wagerText }),
+    acceptChallenge: (challengeId) => api.post(`/games/challenge/${challengeId}/accept`),
+    declineChallenge: (challengeId) => api.post(`/games/challenge/${challengeId}/decline`),
+};
+
 export default api;
