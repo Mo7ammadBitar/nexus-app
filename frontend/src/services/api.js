@@ -92,6 +92,7 @@ export const usersAPI = {
     getUser: (userId) => api.get(`/users/${userId}`),
     updateStatus: (status) => api.put(`/users/status?status_value=${status}`),
     applyServerBoost: (serverId) => api.post('/users/me/apply-boost', { server_id: serverId }),
+    updateEquippedBadges: (badgeIds) => api.put('/users/badges/equip', { badge_ids: badgeIds }),
 };
 
 // Servers API

@@ -18,3 +18,4 @@ from app.routers.preview import router as preview_router
 from app.routers.search import router as search_router
 from app.routers.support import router as support_router
 from app.routers.quests import router as quests_router
+from app.routers.games import router as games_router

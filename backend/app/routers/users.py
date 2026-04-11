@@ -282,6 +282,73 @@ async def get_user_profile(
         "created_at": user.get("created_at"),
         "equipped_relics": user.get("equipped_relics", {}),
         "is_email_verified": user.get("is_email_verified", user.get("role", "user") in ("admin", "super_admin", "system")),
+        # Badges
+        "owned_badges": user.get("owned_badges", []),
+        "equipped_badges": user.get("equipped_badges", []),
+        "is_founder": user.get("is_founder", False),
+        "games_won": user.get("games_won", 0),
+        "completed_quests_count": user.get("completed_quests_count", 0),
+    }
+
+class EquipBadgesRequest(BaseModel):
+    """Request to update equipped badges"""
+    badge_ids: list = []
+
+VALID_BADGE_IDS = {"founder", "scholar", "arena_champion"}
+MAX_EQUIPPED_BADGES = 4
+
+
+@router.put("/badges/equip")
+async def update_equipped_badges(
+    request: EquipBadgesRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update which badges are displayed on the user's profile.
+    Max 4 badges. All badge_ids must be in owned_badges.
+    """
+    badge_ids = request.badge_ids
+    
+    # Validate max equipped
+    if len(badge_ids) > MAX_EQUIPPED_BADGES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot equip more than {MAX_EQUIPPED_BADGES} badges"
+        )
+    
+    # Validate no duplicates
+    if len(badge_ids) != len(set(badge_ids)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Duplicate badge IDs not allowed"
+        )
+    
+    # Validate all are valid badge IDs
+    for bid in badge_ids:
+        if bid not in VALID_BADGE_IDS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid badge ID: {bid}"
+            )
+    
+    # Validate all are owned
+    owned = current_user.get("owned_badges", [])
+    for bid in badge_ids:
+        if bid not in owned:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Badge '{bid}' is not owned"
+            )
+    
+    # Update
+    updated_user = await AuthService.update_user_profile(
+        current_user["_id"],
+        {"equipped_badges": badge_ids}
+    )
+    
+    return {
+        "message": "Equipped badges updated",
+        "equipped_badges": updated_user.get("equipped_badges", [])
     }
 
 

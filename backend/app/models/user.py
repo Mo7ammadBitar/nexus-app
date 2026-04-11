@@ -141,6 +141,13 @@ class UserResponse(BaseModel):
     total_reactions_given: int = 0
     total_servers_joined: int = 0
     
+    # Badges
+    owned_badges: List[str] = []
+    equipped_badges: List[str] = []
+    is_founder: bool = False
+    games_won: int = 0
+    completed_quests_count: int = 0
+    
     class Config:
         populate_by_name = True
 
@@ -194,6 +201,13 @@ class UserInDB(BaseModel):
     has_uploaded_avatar: bool = False
     total_reactions_given: int = 0
     total_servers_joined: int = 0
+    
+    # Badges
+    owned_badges: List[str] = []       # All unlocked badge IDs
+    equipped_badges: List[str] = []    # Up to 4 displayed badge IDs
+    is_founder: bool = False
+    games_won: int = 0
+    completed_quests_count: int = 0
     
     # Ban System
     is_banned: bool = False

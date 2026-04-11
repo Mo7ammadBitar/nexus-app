@@ -81,6 +81,18 @@ class Database:
         await cls.db.user_quest_progress.create_index(
             [("user_id", 1), ("quest_id", 1)], unique=True
         )
+
+        # Game Challenges collection indexes
+        await cls.db.game_challenges.create_index(
+            [("opponent_id", 1), ("status", 1)]
+        )
+        await cls.db.game_challenges.create_index(
+            [("challenger_id", 1), ("status", 1)]
+        )
+        await cls.db.game_challenges.create_index(
+            "expires_at",
+            expireAfterSeconds=300  # Auto-delete 5 min after expiry
+        )
         
         print("✅ Database indexes created")
 
@@ -150,3 +162,8 @@ def get_ticket_messages_collection():
 def get_quest_progress_collection():
     _check_db()
     return Database.db.user_quest_progress
+
+
+def get_game_challenges_collection():
+    _check_db()
+    return Database.db.game_challenges

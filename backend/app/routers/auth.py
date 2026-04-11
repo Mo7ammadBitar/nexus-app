@@ -228,6 +228,12 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
         "total_servers_joined": current_user.get("total_servers_joined", 0),
         # Email verification
         "is_email_verified": current_user.get("is_email_verified", current_user.get("role", "user") in ("admin", "super_admin", "system")),
+        # Badges
+        "owned_badges": current_user.get("owned_badges", []),
+        "equipped_badges": current_user.get("equipped_badges", []),
+        "is_founder": current_user.get("is_founder", False),
+        "games_won": current_user.get("games_won", 0),
+        "completed_quests_count": current_user.get("completed_quests_count", 0),
     }
     
     return safe_user

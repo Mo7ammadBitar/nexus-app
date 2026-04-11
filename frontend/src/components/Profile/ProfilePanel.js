@@ -15,6 +15,8 @@ import NexusEliteModal from './NexusEliteModal';
 import { getAuraRingStyle, getAuraNameStyle, injectAuraAnimations, getAuraAvatarContainerStyle } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
 import { resolveAssetUrl } from '../../config';
+import UserBadges from './UserBadges';
+import BadgeManager from './BadgeManager';
 
 // Inline styles for frame relics
 const FRAME_INLINE_STYLES = {
@@ -98,6 +100,7 @@ const ProfilePanel = ({ onClose }) => {
     const [newTicketSubject, setNewTicketSubject] = useState('');
     const [newTicketMessage, setNewTicketMessage] = useState('');
     const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+    const [showBadgeManager, setShowBadgeManager] = useState(false);
 
     const fetchTickets = async () => {
         try {
@@ -526,6 +529,7 @@ const ProfilePanel = ({ onClose }) => {
                                     )}
                                 </View>
                             )}
+                            <UserBadges user={user} size="small" />
                         </View>
                     </View >
 
@@ -734,6 +738,36 @@ const ProfilePanel = ({ onClose }) => {
                                 <Text style={{ color: '#3a3a5a', fontSize: 11, marginTop: 4 }}>{t('profile.visit_shop', 'Visit the Ethereal Shop to connect relics')}</Text>
                             </View>
                         )}
+
+                        {/* Manage Badges Button */}
+                        <TouchableOpacity
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                                padding: 14,
+                                borderRadius: 10,
+                                borderWidth: 1,
+                                borderColor: 'rgba(168, 85, 247, 0.3)',
+                                marginTop: 12,
+                            }}
+                            onPress={() => setShowBadgeManager(true)}
+                        >
+                            <Sparkles size={16} color="#c4b5fd" style={{ marginRight: 8 }} />
+                            <Text style={{ color: '#c4b5fd', fontWeight: '600', fontSize: 13 }}>Manage Badges</Text>
+                            {(user?.owned_badges?.length > 0) && (
+                                <View style={{
+                                    marginLeft: 8,
+                                    backgroundColor: 'rgba(168, 85, 247, 0.3)',
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 2,
+                                    borderRadius: 10,
+                                }}>
+                                    <Text style={{ color: '#e9d5ff', fontSize: 11, fontWeight: '700' }}>{user.owned_badges.length}</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
                     </View>
 
                     {/* Support Tickets Section */}
@@ -827,6 +861,18 @@ const ProfilePanel = ({ onClose }) => {
                         <Text style={styles.logoutBtnText}>{t('profile.btn_logout', 'Log Out')}</Text>
                     </TouchableOpacity>
                 </ScrollView>
+
+                {/* Badge Manager Modal */}
+                <BadgeManager
+                    isOpen={showBadgeManager}
+                    ownedBadges={user?.owned_badges || []}
+                    equippedBadges={user?.equipped_badges || []}
+                    onSave={(newEquipped) => {
+                        updateUser({ equipped_badges: newEquipped });
+                        refreshUser();
+                    }}
+                    onClose={() => setShowBadgeManager(false)}
+                />
             </View>
         </View>
     );

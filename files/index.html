@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rock Paper Scissors Pro</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     TITLE BAR (custom drag region)
+══════════════════════════════════════ -->
+<div class="titlebar" id="titlebar">
+  <div class="titlebar-logo">
+    <span class="logo-icon">⚡</span>
+    <span class="logo-text">RPS PRO</span>
+  </div>
+  <div class="titlebar-actions">
+    <button class="tb-btn" id="btn-theme"   title="Toggle theme">🌙</button>
+    <button class="tb-btn" id="btn-sound"   title="Toggle sound">🔊</button>
+    <button class="tb-btn" id="btn-history" title="History">📜</button>
+    <button class="tb-btn" id="btn-achiev"  title="Achievements">🏆</button>
+    <button class="tb-btn" id="btn-settings" title="Settings">⚙️</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREENS CONTAINER
+══════════════════════════════════════ -->
+<div class="screens">
+
+  <!-- ── SCREEN: HOME ── -->
+  <div class="screen active" id="screen-home">
+    <div class="home-content">
+      <div class="home-hero">
+        <div class="hero-symbols">
+          <span class="hero-sym s1">🪨</span>
+          <span class="hero-sym s2">📄</span>
+          <span class="hero-sym s3">✂️</span>
+        </div>
+        <h1 class="hero-title">Rock<br/>Paper<br/>Scissors</h1>
+        <p class="hero-sub">The classic game, reimagined.</p>
+      </div>
+
+      <div class="mode-cards">
+        <button class="mode-card" id="btn-pvc">
+          <div class="mode-icon">🤖</div>
+          <div class="mode-info">
+            <span class="mode-name">vs Computer</span>
+            <span class="mode-desc">Challenge the adaptive AI</span>
+          </div>
+          <span class="mode-arrow">→</span>
+        </button>
+        <button class="mode-card" id="btn-pvp">
+          <div class="mode-icon">👥</div>
+          <div class="mode-info">
+            <span class="mode-name">vs Player</span>
+            <span class="mode-desc">Local 2-player showdown</span>
+          </div>
+          <span class="mode-arrow">→</span>
+        </button>
+      </div>
+
+      <div class="home-stats-bar" id="home-stats">
+        <div class="hs-item"><span class="hs-val" id="hs-wins">0</span><span class="hs-label">Wins</span></div>
+        <div class="hs-sep"></div>
+        <div class="hs-item"><span class="hs-val" id="hs-losses">0</span><span class="hs-label">Losses</span></div>
+        <div class="hs-sep"></div>
+        <div class="hs-item"><span class="hs-val" id="hs-draws">0</span><span class="hs-label">Draws</span></div>
+        <div class="hs-sep"></div>
+        <div class="hs-item"><span class="hs-val" id="hs-rate">0%</span><span class="hs-label">Win Rate</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: GAME ── -->
+  <div class="screen" id="screen-game">
+
+    <!-- Header row -->
+    <div class="game-header">
+      <button class="back-btn" id="btn-back">← Back</button>
+      <div class="game-mode-badge" id="game-mode-badge">vs Computer</div>
+      <button class="reset-btn" id="btn-reset">↺ Reset</button>
+    </div>
+
+    <!-- Scoreboard -->
+    <div class="scoreboard">
+      <div class="score-block you">
+        <span class="score-label" id="label-p1">You</span>
+        <span class="score-num"  id="score-p1">0</span>
+      </div>
+      <div class="score-center">
+        <div class="round-badge">Round <span id="round-num">1</span></div>
+        <div class="score-draws">Draws: <span id="score-draws">0</span></div>
+      </div>
+      <div class="score-block opp">
+        <span class="score-label" id="label-p2">CPU</span>
+        <span class="score-num"  id="score-p2">0</span>
+      </div>
+    </div>
+
+    <!-- Arena: the main battle area -->
+    <div class="arena">
+      <div class="arena-side left">
+        <div class="choice-display" id="p1-display">
+          <div class="choice-emoji" id="p1-emoji">❓</div>
+          <div class="choice-name"  id="p1-name">Waiting…</div>
+        </div>
+      </div>
+
+      <div class="arena-vs">
+        <div class="vs-text">VS</div>
+        <div class="result-banner" id="result-banner">
+          <span class="result-text" id="result-text"></span>
+        </div>
+      </div>
+
+      <div class="arena-side right">
+        <div class="choice-display" id="p2-display">
+          <div class="choice-emoji" id="p2-emoji">❓</div>
+          <div class="choice-name"  id="p2-name">Waiting…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PVP hidden move prompt -->
+    <div class="pvp-prompt hidden" id="pvp-prompt">
+      <p id="pvp-prompt-text">Player 1: make your secret move</p>
+      <p class="pvp-hint">Cover the screen between turns!</p>
+    </div>
+
+    <!-- Move buttons -->
+    <div class="move-buttons" id="move-buttons">
+      <button class="move-btn" data-move="rock"     id="btn-rock">
+        <span class="move-emoji">🪨</span>
+        <span class="move-label">Rock</span>
+      </button>
+      <button class="move-btn" data-move="paper"    id="btn-paper">
+        <span class="move-emoji">📄</span>
+        <span class="move-label">Paper</span>
+      </button>
+      <button class="move-btn" data-move="scissors" id="btn-scissors">
+        <span class="move-emoji">✂️</span>
+        <span class="move-label">Scissors</span>
+      </button>
+    </div>
+
+    <!-- PVP step indicator -->
+    <div class="pvp-steps hidden" id="pvp-steps">
+      <div class="pvp-step" id="pvp-step-1">P1</div>
+      <div class="pvp-step" id="pvp-step-2">P2</div>
+    </div>
+
+    <!-- Recent rounds list -->
+    <div class="recent-rounds">
+      <div class="rr-title">Recent Rounds</div>
+      <div class="rr-list" id="rr-list">
+        <div class="rr-empty">No rounds yet — make your move!</div>
+      </div>
+    </div>
+
+  </div><!-- /screen-game -->
+
+</div><!-- /screens -->
+
+<!-- ══════════════════════════════════════
+     OVERLAYS / MODALS
+══════════════════════════════════════ -->
+
+<!-- Achievement Toast -->
+<div class="achievement-toast hidden" id="achievement-toast">
+  <div class="at-icon" id="at-icon">🏆</div>
+  <div class="at-content">
+    <div class="at-label">Achievement Unlocked!</div>
+    <div class="at-name" id="at-name"></div>
+    <div class="at-desc" id="at-desc"></div>
+  </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal-overlay hidden" id="modal-history">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Match History</h2>
+      <button class="modal-close" data-modal="modal-history">✕</button>
+    </div>
+    <div class="modal-body" id="history-body">
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Achievements Modal -->
+<div class="modal-overlay hidden" id="modal-achievements">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Achievements</h2>
+      <button class="modal-close" data-modal="modal-achievements">✕</button>
+    </div>
+    <div class="modal-body" id="achievements-body">
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay hidden" id="modal-settings">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>Settings</h2>
+      <button class="modal-close" data-modal="modal-settings">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="setting-row">
+        <label>Difficulty</label>
+        <div class="seg-control" id="difficulty-control">
+          <button class="seg-btn" data-val="easy">Easy</button>
+          <button class="seg-btn active" data-val="medium">Medium</button>
+          <button class="seg-btn" data-val="hard">Hard</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label>Sound Effects</label>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="sound-toggle" checked />
+          <label for="sound-toggle" class="toggle-label"></label>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label>Theme</label>
+        <div class="seg-control" id="theme-control">
+          <button class="seg-btn active" data-val="dark">Dark</button>
+          <button class="seg-btn" data-val="light">Light</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backend Offline Banner -->
+<div class="offline-banner hidden" id="offline-banner">
+  ⚠️ Backend offline — start the Python server first.
+</div>
+
+<script src="js/sounds.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

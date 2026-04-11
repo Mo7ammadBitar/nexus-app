@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { getAuraRingStyle, getAuraNameStyle, injectAuraAnimations } from '../../utils/PremiumAura';
 import { RELIC_CSS_MAP } from '../Shop/EtherealShop';
 import { resolveAssetUrl } from '../../config';
+import UserBadges from './UserBadges';
 
 // Inline styles for frame relics
 const FRAME_INLINE_STYLES = {
@@ -410,6 +411,7 @@ const MemberProfile = ({ userId, serverRole, onClose }) => {
                                     </span>
                                 )}
                             </h2>
+                            <UserBadges user={user} />
                             <p style={styles.username}>@{user.username}</p>
 
                             <div style={{ ...styles.roleBadge, backgroundColor: badgeBg, color: badgeColor, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
