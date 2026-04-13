@@ -129,10 +129,20 @@ const UserBadges = ({ user, size = 'normal' }) => {
     const userRole = user.role || user.userRole || '';
     const isSuperAdmin = userRole === 'super_admin';
     const isAdmin = userRole === 'admin';
+    const isPrivilegedRole = isSuperAdmin || isAdmin;
 
     // Auto badges
     const roleBadge = isSuperAdmin ? ROLE_BADGES.super_admin : (isAdmin ? ROLE_BADGES.admin : null);
-    const primeTier = isPremium && premiumSince ? getPrimeTier(premiumSince) : null;
+
+    // Prime badge — admins/super_admins ALWAYS get Platinum (lifetime premium)
+    let primeTier = null;
+    if (isPrivilegedRole && isPremium) {
+        // Force Platinum tier for privileged roles regardless of premium_since
+        primeTier = { tier: 'Platinum', color: '#a855f7', glow: '0 0 10px rgba(168,85,247,0.8), 0 0 20px rgba(168,85,247,0.4)', months: 12 };
+    } else if (isPremium && premiumSince) {
+        primeTier = getPrimeTier(premiumSince);
+    }
+
     const hasAnything = roleBadge || primeTier || equippedBadges.length > 0;
 
     if (!hasAnything) return null;
