@@ -282,12 +282,13 @@ async def get_user_profile(
         "created_at": user.get("created_at"),
         "equipped_relics": user.get("equipped_relics", {}),
         "is_email_verified": user.get("is_email_verified", user.get("role", "user") in ("admin", "super_admin", "system")),
-        # Badges
-        "owned_badges": user.get("owned_badges", []),
+        # Badges — admins/super_admins auto-own all standard badges
+        "owned_badges": (lambda ob, role: ob + [b for b in ("founder", "scholar", "arena_champion") if b not in ob] if role in ("admin", "super_admin") else ob)(list(user.get("owned_badges", [])), user.get("role", "user")),
         "equipped_badges": user.get("equipped_badges", []),
         "is_founder": user.get("is_founder", False),
         "games_won": user.get("games_won", 0),
         "completed_quests_count": user.get("completed_quests_count", 0),
+        "role": user.get("role", "user"),
     }
 
 class EquipBadgesRequest(BaseModel):
