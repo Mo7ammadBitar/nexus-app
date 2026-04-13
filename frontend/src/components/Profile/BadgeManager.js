@@ -153,6 +153,18 @@ const BadgeManager = ({ isOpen, ownedBadges = [], equippedBadges = [], onSave, o
                     </div>
                 )}
 
+                {/* Auto-badge hint */}
+                <p style={{
+                    color: '#4a4a6a',
+                    fontSize: 11,
+                    margin: '0 24px 16px 24px',
+                    lineHeight: 1.5,
+                    fontStyle: 'italic',
+                    textAlign: 'center',
+                }}>
+                    Note: Role (Admin/Creator) and Prime badges are permanently auto-displayed and do not require manual equipping.
+                </p>
+
                 {/* Error / Success Messages */}
                 {error && (
                     <div style={styles.errorMsg}>

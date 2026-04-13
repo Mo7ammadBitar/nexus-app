@@ -1,5 +1,5 @@
 import React from 'react';
-import { Crown, Sparkles, BookOpen, Swords } from 'lucide-react';
+import { Crown, Sparkles, BookOpen, Swords, ShieldCheck, Terminal } from 'lucide-react';
 
 /**
  * Badge Definitions Map
@@ -32,6 +32,27 @@ export const BADGE_DEFINITIONS = {
         color: '#ef4444',       // Crimson Red
         glow: '0 0 8px rgba(239, 68, 68, 0.7), 0 0 16px rgba(239, 68, 68, 0.3)',
         gradient: 'linear-gradient(135deg, #ef4444, #f87171)',
+    },
+};
+
+/**
+ * Role Badge Definitions
+ * Auto-displayed based on user.role, do NOT count toward the 4 manual equip slots.
+ */
+const ROLE_BADGES = {
+    super_admin: {
+        tooltip: 'Nexus Creator',
+        icon: Terminal,
+        color: '#f59e0b',
+        glow: '0 0 10px rgba(245, 158, 11, 0.8), 0 0 22px rgba(239, 68, 68, 0.5)',
+        gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+    },
+    admin: {
+        tooltip: 'Nexus Admin',
+        icon: ShieldCheck,
+        color: '#06b6d4',
+        glow: '0 0 10px rgba(6, 182, 212, 0.8), 0 0 22px rgba(59, 130, 246, 0.5)',
+        gradient: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
     },
 };
 
@@ -88,21 +109,31 @@ const BadgeChip = ({ icon: Icon, color, glow, tooltip, gradient }) => (
 /**
  * UserBadges — display-only component
  *
- * Renders the Evolving Prime badge (if applicable, does NOT count toward 4 limit)
- * followed by equipped manual badges.
+ * Render order: Role Badge (Owner/Admin) -> Prime Badge -> Equipped Manual Badges.
+ * Role and Prime badges are auto-displayed and do NOT count toward the 4 manual equip limit.
  *
- * @param {object} user — needs: is_premium, premium_since, equipped_badges
+ * @param {object} user — needs: role, is_premium, premium_since, equipped_badges
  * @param {string} size — 'small' | 'normal' (default 'normal')
  */
 const UserBadges = ({ user, size = 'normal' }) => {
     if (!user) return null;
 
+    // DEBUG — remove after confirming role badge works
+    console.log('[UserBadges] user.role:', user.role, '| user.equipped_badges:', user.equipped_badges, '| user.is_premium:', user.is_premium);
+
     const equippedBadges = user.equipped_badges || [];
     const isPremium = user.is_premium;
     const premiumSince = user.premium_since;
 
+    // Brute-force role detection — check every possible field
+    const userRole = user.role || user.userRole || '';
+    const isSuperAdmin = userRole === 'super_admin';
+    const isAdmin = userRole === 'admin';
+
+    // Auto badges
+    const roleBadge = isSuperAdmin ? ROLE_BADGES.super_admin : (isAdmin ? ROLE_BADGES.admin : null);
     const primeTier = isPremium && premiumSince ? getPrimeTier(premiumSince) : null;
-    const hasAnything = primeTier || equippedBadges.length > 0;
+    const hasAnything = roleBadge || primeTier || equippedBadges.length > 0;
 
     if (!hasAnything) return null;
 
@@ -120,7 +151,18 @@ const UserBadges = ({ user, size = 'normal' }) => {
                 transformOrigin: 'left center',
             }}
         >
-            {/* Auto Prime Badge */}
+            {/* 1. Auto Role Badge (Owner / Admin) */}
+            {roleBadge && (
+                <BadgeChip
+                    icon={roleBadge.icon}
+                    color={roleBadge.color}
+                    glow={roleBadge.glow}
+                    gradient={roleBadge.gradient}
+                    tooltip={roleBadge.tooltip}
+                />
+            )}
+
+            {/* 2. Auto Prime Badge */}
             {primeTier && (
                 <BadgeChip
                     icon={Crown}
@@ -131,7 +173,7 @@ const UserBadges = ({ user, size = 'normal' }) => {
                 />
             )}
 
-            {/* Manual Equipped Badges */}
+            {/* 3. Manual Equipped Badges */}
             {equippedBadges.map((badgeId) => {
                 const def = BADGE_DEFINITIONS[badgeId];
                 if (!def) return null;

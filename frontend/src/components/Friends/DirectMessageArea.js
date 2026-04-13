@@ -691,36 +691,43 @@ const DirectMessageArea = () => {
                 </TouchableOpacity>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <TouchableOpacity
-                        style={{ padding: 8, marginInlineEnd: 8 }}
-                        onPress={() => {
-                            if (!isCallActive) {
-                                setIsCallActive(true);
-                                setCallStatus('calling');
-                                initiateDMCall(currentDMFriend?.id || currentDMFriend?._id);
-                            } else {
-                                // Hang up / Cancel
-                                setIsCallActive(false);
-                                setCallStatus(null);
-                                cancelDMCall(currentDMFriend?.id || currentDMFriend?._id);
-                            }
-                        }}
-                        title={t('dm.btn_call', 'Voice Call')}
-                    >
-                        {isCallActive ? (
-                            <PhoneOff size={24} color="#ef4444" />
-                        ) : (
-                            <Phone size={24} color="#b9bbbe" />
-                        )}
-                    </TouchableOpacity>
+                    {(() => {
+                        const isOracle = currentDMFriend?._id === '000000000000000000000001' || currentDMFriend?.id === '000000000000000000000001' || currentDMFriend?.username === 'The Oracle' || currentDMFriend?.username === 'Oracle';
+                        console.log('[DM Header] isOracle:', isOracle, '| _id:', currentDMFriend?._id, '| id:', currentDMFriend?.id, '| username:', currentDMFriend?.username);
+                        return !isOracle ? (
+                        <>
+                            <TouchableOpacity
+                                style={{ padding: 8, marginInlineEnd: 8 }}
+                                onPress={() => {
+                                    if (!isCallActive) {
+                                        setIsCallActive(true);
+                                        setCallStatus('calling');
+                                        initiateDMCall(currentDMFriend?.id || currentDMFriend?._id);
+                                    } else {
+                                        // Hang up / Cancel
+                                        setIsCallActive(false);
+                                        setCallStatus(null);
+                                        cancelDMCall(currentDMFriend?.id || currentDMFriend?._id);
+                                    }
+                                }}
+                                title={t('dm.btn_call', 'Voice Call')}
+                            >
+                                {isCallActive ? (
+                                    <PhoneOff size={24} color="#ef4444" />
+                                ) : (
+                                    <Phone size={24} color="#b9bbbe" />
+                                )}
+                            </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={{ padding: 8, marginInlineEnd: 8 }}
-                        onPress={() => setShowChallengeModal(true)}
-                        title="Game Challenge"
-                    >
-                        <Gamepad2 size={24} color="#4ade80" />
-                    </TouchableOpacity>
+                            <TouchableOpacity
+                                style={{ padding: 8, marginInlineEnd: 8 }}
+                                onPress={() => setShowChallengeModal(true)}
+                                title="Game Challenge"
+                            >
+                                <Gamepad2 size={24} color="#4ade80" />
+                            </TouchableOpacity>
+                        </>
+                    ) : null; })()}
 
                     <TouchableOpacity
                         style={{ padding: 8, marginInlineEnd: 16 }}
