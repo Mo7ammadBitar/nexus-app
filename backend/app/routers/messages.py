@@ -132,6 +132,116 @@ async def send_message(
             detail="Only moderators and owner can send messages in this channel"
         )
     
+    # Check timeout
+    from datetime import datetime, timezone
+    if member.get("timeout_until"):
+        timeout_until = member["timeout_until"]
+        if isinstance(timeout_until, str):
+            timeout_until = datetime.fromisoformat(timeout_until.replace('Z', '+00:00'))
+        
+        # Ensure timeout_until is offset-naive for comparison, since datetime.utcnow() is naive
+        if timeout_until.tzinfo is not None:
+             timeout_until = timeout_until.replace(tzinfo=None)
+             
+        if timeout_until > datetime.utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"You are timed out by Nexus Sentinel."
+            )
+
+    # ------------------ NEXUS SENTINEL CHECK ------------------
+    from app.services.server_service import ServerService
+    server = await ServerService.get_server_by_id(channel["server_id"])
+    if server and server.get("sentinel_settings", {}).get("is_enabled") and member["role"] not in ["owner", "moderator"]:
+        sentinel = server["sentinel_settings"]
+        is_violation = False
+        violation_reason = ""
+        
+        # 1. Anti-Links Match
+        if sentinel.get("anti_links") and content:
+            import re
+            if re.search(r"https?://", content, re.IGNORECASE):
+                is_violation = True
+                violation_reason = "Posting links is not allowed"
+
+        # 2. Banned Words Match
+        if not is_violation and content and sentinel.get("banned_words"):
+            content_lower = content.lower()
+            for word in sentinel.get("banned_words"):
+                if word.strip() and word.strip().lower() in content_lower:
+                    is_violation = True
+                    violation_reason = f"Usage of banned word: {word}"
+                    break
+        
+        # 3. Anti-Spam (5 messages in 5 seconds)
+        if not is_violation and sentinel.get("anti_spam"):
+            from datetime import timedelta
+            from app.database import get_messages_collection
+            messages_col = get_messages_collection()
+            five_sec_ago = datetime.utcnow() - timedelta(seconds=5)
+            recent_msgs = await messages_col.count_documents({
+                "channel_id": channel_id,
+                "user_id": current_user["_id"],
+                "timestamp": {"$gt": five_sec_ago}
+            })
+            if recent_msgs >= 5:
+                is_violation = True
+                violation_reason = "Triggered anti-spam limit"
+
+        if is_violation:
+            from datetime import timedelta
+            from app.database import get_members_collection, get_database
+            
+            members_col = get_members_collection()
+            new_strikes = member.get("strikes", 0) + 1
+            
+            update_data = {"$set": {"strikes": new_strikes}}
+            
+            new_timeout_until = None
+            if new_strikes >= 2:
+                new_timeout_until = datetime.utcnow() + timedelta(minutes=10)
+                update_data["$set"]["timeout_until"] = new_timeout_until
+                
+            await members_col.update_one(
+                {"server_id": channel["server_id"], "user_id": current_user["_id"]},
+                update_data
+            )
+            
+            # Audit log
+            db = get_database()
+            audit_col = db["audit_logs"]
+            
+            await audit_col.insert_one({
+                "server_id": channel["server_id"],
+                "action": "sentinel_auto_mod",
+                "user_id": current_user["_id"],
+                "reason": violation_reason,
+                "created_at": datetime.utcnow()
+            })
+            
+            from app.socket_instance import sio
+            if new_strikes == 1:
+                # Warning
+                await sio.emit("sentinel_warning", {
+                    "reason": violation_reason,
+                    "channel_id": channel_id,
+                    "server_id": channel["server_id"]
+                }, room=str(current_user["_id"]), namespace="/chat")
+            elif new_strikes >= 2:
+                # Timeout
+                await sio.emit("sentinel_timeout", {
+                    "reason": violation_reason,
+                    "until": new_timeout_until.isoformat(),
+                    "channel_id": channel_id,
+                    "server_id": channel["server_id"]
+                }, room=str(current_user["_id"]), namespace="/chat")
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Sentinel Blocked: {violation_reason}. Current strikes: {new_strikes}"
+            )
+    # ------------------------------------------------------------
+    
     # Process attachment
     attachments = []
     if file and file.filename:

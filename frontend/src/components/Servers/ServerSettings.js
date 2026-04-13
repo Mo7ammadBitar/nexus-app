@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Edit2, Check, Copy, Crown, Shield, User, Lightbulb, Trash2, Camera, Lock, Image, Upload } from 'lucide-react';
+import { X, Edit2, Check, Copy, Crown, Shield, User, Lightbulb, Trash2, Camera, Lock, Image, Upload, ShieldAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useServerStore } from '../../store/serverStore';
-import { serversAPI } from '../../services/api';
+import { serversAPI } from '../../services/api';import SentinelDashboard from './SentinelDashboard';
 
 const ServerSettings = ({ onClose }) => {
     const { t } = useTranslation();
@@ -11,6 +11,7 @@ const ServerSettings = ({ onClose }) => {
     const [copied, setCopied] = useState(false);
     const [editingName, setEditingName] = useState(false);
     const [newName, setNewName] = useState(currentServer?.name || '');
+    const [showSentinel, setShowSentinel] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [uploadingIcon, setUploadingIcon] = useState(false);
@@ -274,6 +275,22 @@ const ServerSettings = ({ onClose }) => {
                     )}
                 </div>
 
+                {/* Sentinel Section */}
+                {canViewInvite && (
+                    <div style={styles.section}>
+                        <h3 style={styles.sectionTitle}>
+                            <ShieldAlert size={14} color="#ef4444" style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                            Nexus Sentinel
+                        </h3>
+                        <p style={styles.description}>
+                            Access the automated moderation system and threat logs.
+                        </p>
+                        <button style={styles.sentinelBtn} onClick={() => setShowSentinel(true)}>
+                            OPEN SENTINEL CONTROL ROOM
+                        </button>
+                    </div>
+                )}
+
                 {isOwner && (
                     <div style={styles.section}>
                         <h3 style={styles.sectionTitle}>{t('server.abyssal_zone', 'Abyssal Zone')}</h3>
@@ -286,6 +303,16 @@ const ServerSettings = ({ onClose }) => {
                     </div>
                 )}
             </div>
+            {showSentinel && (
+                <SentinelDashboard 
+                    serverId={currentServer._id} 
+                    currentSettings={currentServer.sentinel_settings || {}}
+                    onClose={() => setShowSentinel(false)} 
+                    onSettingsUpdated={(newSettings) => {
+                        // Optimistically update local store/settings if needed
+                    }}
+                />
+            )}
         </div>,
         document.body
     );
@@ -599,6 +626,18 @@ const styles = {
         fontWeight: '600',
         cursor: 'pointer',
         width: '100%',
+    },
+    sentinelBtn: {
+        background: 'rgba(239, 68, 68, 0.1)',
+        border: '1px solid rgba(239, 68, 68, 0.3)',
+        borderRadius: '8px',
+        padding: '12px 20px',
+        color: '#ef4444',
+        fontSize: '13px',
+        fontWeight: '600',
+        cursor: 'pointer',
+        width: '100%',
+        letterSpacing: '1px',
     },
     warningText: {
         color: '#6b7280',

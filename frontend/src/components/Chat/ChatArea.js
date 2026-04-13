@@ -15,7 +15,7 @@ import VoiceChannel from './VoiceChannel';
 import MemberProfile from '../Profile/MemberProfile';
 import IncomingCallModal from './IncomingCallModal';
 import { generateMessageLink, copyToClipboard } from '../../utils/messageLinkUtils';
-import { Smile, SmilePlus, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Pin, Bell, Users, Hash, Sparkles, Eye, X, ArrowLeft, Timer, VolumeX } from 'lucide-react';
+import { Smile, SmilePlus, Star, Reply, Share, Link, Edit2, Trash2, Check, Mic, Send, Square, Pin, Bell, Users, Hash, Sparkles, Eye, X, ArrowLeft, Timer, VolumeX, ShieldAlert } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import {
     getAuraRingStyle,
@@ -90,12 +90,14 @@ const ChatArea = () => {
     const isMobile = useIsMobile();
     const { currentChannel, messages, addMessage, updateMessage, removeMessage, fetchMessages, members, fetchMembers, currentServer } = useServerStore();
     const { user } = useAuthStore();
+    const [muteTimeRemaining, setMuteTimeRemaining] = useState('');
+    const [timeoutTimeRemaining, setTimeoutTimeRemaining] = useState('');
+    const [isTyping, setIsTyping] = useState(false);
     const [messageText, setMessageText] = useState('');
     const [isSending, setIsSending] = useState(false);
     const scrollRef = useRef(null);
     const fileInputRef = useRef(null);
     const [selectedFiles, setSelectedFiles] = useState([]);
-    const [muteTimeRemaining, setMuteTimeRemaining] = useState('');
 
     const ALLOWED_EXTENSIONS = ['docx', 'pdf', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'txt', 'zip', 'rar'];
 
@@ -171,6 +173,7 @@ const ChatArea = () => {
     const isMuted = myMemberData?.is_muted;
     const muteReason = myMemberData?.mute_reason;
     const muteExpiresAt = myMemberData?.mute_expires_at;
+    const timeoutUntil = myMemberData?.timeout_until;
 
     // Check if user is moderator/owner
     const isModOrOwner = myMemberData?.role === 'owner' || myMemberData?.role === 'moderator';
@@ -246,6 +249,40 @@ const ChatArea = () => {
         const interval = setInterval(updateTimeRemaining, 1000);
         return () => clearInterval(interval);
     }, [isMuted, muteExpiresAt, currentServer?._id, fetchMembers]);
+
+    // Calculate and update remaining timeout time
+    useEffect(() => {
+        if (!timeoutUntil) {
+            setTimeoutTimeRemaining('');
+            return;
+        }
+
+        const updateTimeRemaining = () => {
+            const now = new Date();
+            const rawTs = String(timeoutUntil);
+            const expiresAt = new Date(rawTs.endsWith('Z') || rawTs.includes('+') ? rawTs : rawTs + 'Z');
+            const diffMs = expiresAt - now;
+
+            if (diffMs <= 0) {
+                setTimeoutTimeRemaining('');
+                if (currentServer?._id) {
+                    fetchMembers(currentServer._id);
+                }
+                return;
+            }
+
+            const minutes = Math.floor(diffMs / (1000 * 60));
+            const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+            setTimeoutTimeRemaining(`${minutes}m ${seconds}s`);
+        };
+
+        updateTimeRemaining();
+        const interval = setInterval(updateTimeRemaining, 1000);
+        return () => clearInterval(interval);
+    }, [timeoutUntil, currentServer?._id, fetchMembers]);
+    
+    const isTimedOut = timeoutTimeRemaining !== '';
 
     useEffect(() => {
         // Channel to bottom on new messages (unless we're highlighting)
@@ -1188,7 +1225,19 @@ const ChatArea = () => {
 
             {/* Input - Show muted message, restricted message, or normal input */}
             {
-                isMuted ? (
+                isTimedOut ? (
+                    <View style={styles.mutedContainer}>
+                        <View style={styles.mutedIcon}>
+                            <ShieldAlert size={22} color="#ef4444" />
+                        </View>
+                        <View style={styles.mutedInfo}>
+                            <Text style={styles.mutedTitle}>Nexus Sentinel Intervention</Text>
+                            <Text style={styles.mutedReason}>
+                                You are timed out by the automated defense system. Try again in {timeoutTimeRemaining}.
+                            </Text>
+                        </View>
+                    </View>
+                ) : isMuted ? (
                     <View style={styles.mutedContainer}>
                         <View style={styles.mutedIcon}>
                             <VolumeX size={22} color="#ef4444" />

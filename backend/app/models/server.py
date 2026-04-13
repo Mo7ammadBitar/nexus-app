@@ -22,6 +22,14 @@ class ChannelType(str, Enum):
 
 # ============ Server Models ============
 
+class SentinelSettings(BaseModel):
+    """Configuration for Nexus Sentinel bot"""
+    is_enabled: bool = False
+    anti_spam: bool = True
+    anti_links: bool = False
+    banned_words: List[str] = Field(default_factory=list)
+    ai_strictness: bool = False
+
 class ServerCreate(BaseModel):
     """Create server request"""
     name: str = Field(..., min_length=2, max_length=100)
@@ -44,6 +52,7 @@ class ServerResponse(BaseModel):
     owner_id: str
     invite_code: str
     member_count: int = 0
+    sentinel_settings: Optional[SentinelSettings] = None
     created_at: datetime
     
     class Config:
@@ -65,6 +74,7 @@ class ServerInDB(BaseModel):
     boost_level: int = 0
     owner_id: str
     invite_code: str
+    sentinel_settings: SentinelSettings = Field(default_factory=SentinelSettings)
     
     # Ban system
     is_banned: bool = False
@@ -130,6 +140,8 @@ class MemberResponse(BaseModel):
     avatar_url: Optional[str]
     role: ServerRole
     is_muted: bool = False
+    strikes: int = 0
+    timeout_until: Optional[datetime] = None
     joined_at: datetime
     
     class Config:
@@ -147,6 +159,10 @@ class MemberInDB(BaseModel):
     is_muted: bool = False
     mute_reason: Optional[str] = None
     mute_expires_at: Optional[datetime] = None
+    
+    # Sentinel system
+    strikes: int = 0
+    timeout_until: Optional[datetime] = None
     
     joined_at: datetime = Field(default_factory=datetime.utcnow)
     

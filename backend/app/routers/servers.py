@@ -555,3 +555,84 @@ async def upload_server_banner(
     updated = await ServerService.update_server(server_id, {"banner_url": banner_url})
     return {"message": "Server banner updated", "banner_url": banner_url, "server": updated}
 
+
+# ============ Nexus Sentinel ============
+
+from app.models.server import SentinelSettings
+
+@router.put("/{server_id}/sentinel")
+async def update_sentinel_settings(
+    server_id: str,
+    settings: SentinelSettings,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update Nexus Sentinel settings (owner only)."""
+    # Check ownership
+    member = await MemberService.get_member(server_id, current_user["_id"])
+    if not member or member["role"] != ServerRole.OWNER.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only server owner can configure Sentinel"
+        )
+    
+    updated = await ServerService.update_server(server_id, {"sentinel_settings": settings.dict()})
+    return {"message": "Sentinel settings updated", "server": updated}
+
+
+@router.get("/{server_id}/audit-logs")
+async def get_audit_logs(
+    server_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get server audit logs (owner/moderator only)."""
+    # Check ownership or moderator
+    member = await MemberService.get_member(server_id, current_user["_id"])
+    if not member or member["role"] not in [ServerRole.OWNER.value, ServerRole.MODERATOR.value]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only owner or moderators can view audit logs"
+        )
+    
+    from app.database import get_database
+    db = get_database()
+    cursor = db["audit_logs"].find({"server_id": server_id}).sort("created_at", -1).limit(100)
+    logs = await cursor.to_list(length=100)
+    
+    # Process object ids for frontend
+    for log in logs:
+        if "_id" in log:
+            log["_id"] = str(log["_id"])
+            
+    return {"audit_logs": logs}
+
+
+@router.post("/{server_id}/members/{user_id}/pardon")
+async def pardon_member(
+    server_id: str,
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Reset a member's Sentinel strikes to 0 (owner/moderator)."""
+    member = await MemberService.get_member(server_id, current_user["_id"])
+    if not member or member["role"] not in [ServerRole.OWNER.value, ServerRole.MODERATOR.value]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only owner or moderator can pardon members"
+        )
+    
+    from app.database import get_members_collection
+    members_col = get_members_collection()
+    
+    result = await members_col.update_one(
+        {"server_id": server_id, "user_id": user_id},
+        {"$set": {"strikes": 0, "timeout_until": None}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found or already pardoned"
+        )
+        
+    return {"message": "Member has been pardoned (strikes reset to 0)"}
+
