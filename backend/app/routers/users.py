@@ -332,8 +332,13 @@ async def update_equipped_badges(
                 detail=f"Invalid badge ID: {bid}"
             )
     
-    # Validate all are owned
-    owned = current_user.get("owned_badges", [])
+    # Validate all are owned — admins/super_admins auto-own all standard badges
+    owned = list(current_user.get("owned_badges", []))
+    if current_user.get("role") in ("admin", "super_admin"):
+        for standard_badge in VALID_BADGE_IDS:
+            if standard_badge not in owned:
+                owned.append(standard_badge)
+    
     for bid in badge_ids:
         if bid not in owned:
             raise HTTPException(
