@@ -60,6 +60,11 @@ class AuthService:
             # Soft delete
             "is_deleted": False,
             
+            # Email Verification
+            "is_email_verified": False,
+            "email_verification_token": None,
+            "email_verification_expires": None,
+            
             # Metadata
             "created_by": created_by,
             "created_at": datetime.utcnow(),

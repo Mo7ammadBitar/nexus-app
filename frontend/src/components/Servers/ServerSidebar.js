@@ -166,6 +166,7 @@ const ServerSidebar = ({ onOpenFriends, onOpenPrime }) => {
                         useFriendsStore.getState().closeDM();
                         setShowPrimeScreen(false);
                         setShowGamingHub(true);
+                        useUIStore.getState().setMobileView('chat');
                     }}
                     title="Gaming Hub"
                 >

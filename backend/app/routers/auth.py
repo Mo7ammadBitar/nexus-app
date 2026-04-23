@@ -71,8 +71,16 @@ async def register(request: RegisterRequest):
         await AuthService.update_user_profile(user["_id"], update_fields)
         
         # Send verification email
-        await send_otp_email(request.email, otp, context="registration")
-        
+        try:
+            await send_otp_email(request.email, otp, context="registration")
+        except Exception as email_err:
+            from bson import ObjectId
+            # Rollback: delete the created user
+            await users_col.delete_one({"_id": ObjectId(user["_id"])})
+            import logging
+            logging.error(f"Failed to send email to {request.email}: {str(email_err)}")
+            raise ValueError("Failed to send verification email. Please try again.")
+            
         return RegisterResponse(
             user_id=user["_id"],
             username=user["username"]
