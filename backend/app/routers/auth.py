@@ -13,6 +13,7 @@ from app.schemas.auth import (
 from app.services.auth_service import AuthService
 from app.middleware.auth import get_current_user
 from app.models.user import UserCreate, UserRole
+from app.database import get_users_collection
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
