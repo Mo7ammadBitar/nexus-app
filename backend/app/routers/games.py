@@ -145,7 +145,7 @@ async def accept_challenge(
     challenge_id: str,
     current_user: dict = Depends(get_current_user),
 ):
-    """Accept a pending game challenge."""
+    """Accept a pending game challenge and start the game session."""
     challenges = get_game_challenges_collection()
 
     try:
@@ -172,15 +172,44 @@ async def accept_challenge(
         )
         raise HTTPException(status_code=400, detail="Challenge has expired.")
 
-    # Accept
+    # Generate unique game room ID
+    game_room_id = f"game_{challenge_id}"
+
+    # Accept and persist the game room
     await challenges.update_one(
         {"_id": doc["_id"]},
-        {"$set": {"status": "accepted"}},
+        {"$set": {"status": "accepted", "game_room_id": game_room_id}},
     )
     doc["status"] = "accepted"
+    doc["game_room_id"] = game_room_id
     serialized = serialize_challenge(doc)
 
-    # Notify the challenger
+    # Build the game start payload for both players
+    game_start_payload = {
+        "challenge_id": str(doc["_id"]),
+        "game_room_id": game_room_id,
+        "game_type": doc["game_type"],
+        "challenger_id": doc["challenger_id"],
+        "opponent_id": doc["opponent_id"],
+        "challenger_name": doc.get("challenger_name", "Player 1"),
+        "opponent_name": doc.get("opponent_name", "Player 2"),
+    }
+
+    # Emit game:start to BOTH players so they both navigate to the game
+    await sio.emit(
+        "game:start",
+        game_start_payload,
+        room=f"user_{doc['challenger_id']}",
+        namespace="/chat",
+    )
+    await sio.emit(
+        "game:start",
+        game_start_payload,
+        room=f"user_{doc['opponent_id']}",
+        namespace="/chat",
+    )
+
+    # Also emit the legacy challenge_accepted for UI card updates
     await sio.emit(
         "game:challenge_accepted",
         serialized,

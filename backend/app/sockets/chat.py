@@ -445,3 +445,73 @@ class ChatNamespace(socketio.AsyncNamespace):
         await self.emit("dm_call_accepted", {
             "accepted_by": user["user_id"]
         }, room=f"user_{caller_id}")
+
+    # =========================================================================
+    # MULTIPLAYER GAME SESSION EVENTS
+    # Real-time move relay for TicTacToe / RPS between two players.
+    # =========================================================================
+
+    async def on_game_join_room(self, sid, data):
+        """Player joins a game-specific room for real-time move exchange"""
+        if sid not in self.connected_users:
+            return {"error": "Not authenticated"}
+        
+        game_room_id = data.get("game_room_id")
+        if not game_room_id:
+            return {"error": "game_room_id required"}
+        
+        user = self.connected_users[sid]
+        await self.enter_room(sid, game_room_id)
+        
+        # Notify the other player that this player is ready
+        await self.emit("game:player_joined", {
+            "user_id": user["user_id"],
+            "username": user["username"],
+            "game_room_id": game_room_id,
+        }, room=game_room_id, skip_sid=sid)
+        
+        print(f"🎮 {user['username']} joined game room {game_room_id}")
+        return {"success": True}
+
+    async def on_game_move(self, sid, data):
+        """Player submits a move — relay to opponent in the game room"""
+        if sid not in self.connected_users:
+            return {"error": "Not authenticated"}
+        
+        game_room_id = data.get("game_room_id")
+        if not game_room_id:
+            return {"error": "game_room_id required"}
+        
+        user = self.connected_users[sid]
+        
+        # Relay the move to the other player in the room
+        await self.emit("game:move_made", {
+            "user_id": user["user_id"],
+            "username": user["username"],
+            "game_room_id": game_room_id,
+            "move": data.get("move"),           # For TTT: cell index (0-8)
+            "move_type": data.get("move_type"),  # For RPS: "rock"/"paper"/"scissors"
+        }, room=game_room_id, skip_sid=sid)
+        
+        return {"success": True}
+
+    async def on_game_leave(self, sid, data):
+        """Player leaves a game room"""
+        if sid not in self.connected_users:
+            return
+        
+        game_room_id = data.get("game_room_id")
+        if not game_room_id:
+            return
+        
+        user = self.connected_users[sid]
+        
+        # Notify opponent
+        await self.emit("game:player_left", {
+            "user_id": user["user_id"],
+            "username": user["username"],
+            "game_room_id": game_room_id,
+        }, room=game_room_id, skip_sid=sid)
+        
+        await self.leave_room(sid, game_room_id)
+        print(f"🎮 {user['username']} left game room {game_room_id}")

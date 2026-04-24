@@ -432,11 +432,34 @@ export const useFriendsStore = create((set, get) => ({
         socket.on('game:challenge_accepted', (challenge) => {
             console.log('🎮 Challenge accepted:', challenge);
             get().updateGameChallenge(challenge._id, { status: 'accepted' });
-            showNativeNotification(
-                'Challenge Accepted!',
-                `${challenge.opponent_name} accepted your challenge!`,
-                { skipFocusCheck: true }
-            );
+            // Note: actual navigation is handled by the game:start event
+        });
+
+        // 4. LISTENER FOR GAME START — Auto-navigate both players into the game
+        socket.off('game:start');
+        socket.on('game:start', (gameData) => {
+            console.log('🎮 Game starting!', gameData);
+            const currentUserId = JSON.parse(localStorage.getItem('user') || '{}')._id;
+            
+            // Determine this player's role
+            const isChallenger = gameData.challenger_id === currentUserId;
+            const opponentName = isChallenger ? gameData.opponent_name : gameData.challenger_name;
+            
+            // Import and set the UI store to navigate to the game
+            // We import dynamically to avoid circular dependencies
+            const { useUIStore } = require('./uiStore');
+            useUIStore.getState().setActiveMultiplayerGame({
+                gameRoomId: gameData.game_room_id,
+                gameType: gameData.game_type,
+                challengeId: gameData.challenge_id,
+                challengerId: gameData.challenger_id,
+                opponentId: gameData.opponent_id,
+                challengerName: gameData.challenger_name,
+                opponentName: gameData.opponent_name,
+                myRole: isChallenger ? 'challenger' : 'opponent',
+                myName: isChallenger ? gameData.challenger_name : gameData.opponent_name,
+                theirName: opponentName,
+            });
         });
 
         socket.off('game:challenge_declined');

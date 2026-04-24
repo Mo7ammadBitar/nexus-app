@@ -21,6 +21,12 @@ export const useUIStore = create((set) => ({
     showGamingHub: false,
     setShowGamingHub: (show) => set({ showGamingHub: show }),
 
+    // Active multiplayer game session (set by game:start socket event)
+    // Shape: { gameRoomId, gameType, challengeId, challengerId, opponentId, challengerName, opponentName }
+    activeMultiplayerGame: null,
+    setActiveMultiplayerGame: (game) => set({ activeMultiplayerGame: game, showGamingHub: true }),
+    clearActiveMultiplayerGame: () => set({ activeMultiplayerGame: null }),
+
     // Global Error State (fallback for general app errors without boundaries)
     globalError: null,
     setGlobalError: (error) => set({ globalError: error }),

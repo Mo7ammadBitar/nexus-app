@@ -2,9 +2,26 @@ import React, { useState } from 'react';
 import { Gamepad2, ArrowLeft, Swords, Trophy, Hexagon, FileText, Scissors, X, Circle, Grid3x3 } from 'lucide-react';
 import RockPaperScissors from './RockPaperScissors';
 import TicTacToe from './TicTacToe';
+import { useUIStore } from '../../store/uiStore';
 
 const GamingHub = () => {
     const [activeGame, setActiveGame] = useState(null);
+    const activeMultiplayerGame = useUIStore(s => s.activeMultiplayerGame);
+    const clearActiveMultiplayerGame = useUIStore(s => s.clearActiveMultiplayerGame);
+
+    // Priority: if a multiplayer game session is active, render that game
+    if (activeMultiplayerGame) {
+        const handleExitMultiplayer = () => {
+            clearActiveMultiplayerGame();
+        };
+
+        if (activeMultiplayerGame.gameType === 'tic-tac-toe') {
+            return <TicTacToe onBack={handleExitMultiplayer} multiplayerSession={activeMultiplayerGame} />;
+        }
+        if (activeMultiplayerGame.gameType === 'rps') {
+            return <RockPaperScissors onBack={handleExitMultiplayer} multiplayerSession={activeMultiplayerGame} />;
+        }
+    }
 
     if (activeGame === 'rps') {
         return <RockPaperScissors onBack={() => setActiveGame(null)} />;

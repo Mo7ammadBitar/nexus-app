@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, RotateCcw, X, Circle, ChevronDown, Bot, Users, Search, Send, Loader, Clock } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ArrowLeft, RotateCcw, X, Circle, ChevronDown, Bot, Users, Search, Send, Loader, Clock, Wifi, WifiOff } from 'lucide-react';
 import { useFriendsStore } from '../../store/friendsStore';
 import { gamesAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { resolveAssetUrl } from '../../config';
+import { chatSocket } from '../../services/socket';
 
 // ── SOUND ENGINE ──
 const createSoundEngine = () => {
@@ -530,10 +531,245 @@ const CPUGameView = ({ onBack, onBackToLobby }) => {
 
 
 // ═══════════════════════════════════════════════════
+// MULTIPLAYER GAME VIEW — Real-time 2-player via Socket.IO
+// ═══════════════════════════════════════════════════
+const MultiplayerGameView = ({ session, onBack }) => {
+    const soundsRef = useRef(null);
+    if (!soundsRef.current) soundsRef.current = createSoundEngine();
+    const sounds = soundsRef.current;
+
+    // Challenger is always X, opponent is always O
+    const myMark = session.myRole === 'challenger' ? 'X' : 'O';
+    const theirMark = myMark === 'X' ? 'O' : 'X';
+    // Challenger (X) always goes first
+    const iGoFirst = myMark === 'X';
+
+    const [board, setBoard] = useState(Array(9).fill(null));
+    const [isMyTurn, setIsMyTurn] = useState(iGoFirst);
+    const [gameOver, setGameOver] = useState(false);
+    const [winLine, setWinLine] = useState(null);
+    const [resultText, setResultText] = useState('');
+    const [resultType, setResultType] = useState('');
+    const [opponentReady, setOpponentReady] = useState(false);
+    const [hoveredCell, setHoveredCell] = useState(null);
+    const [score, setScore] = useState({ me: 0, them: 0, draws: 0 });
+    const boardRef = useRef(board);
+    boardRef.current = board;
+
+    // Join game room on mount
+    useEffect(() => {
+        if (!chatSocket) return;
+
+        chatSocket.emit('game_join_room', { game_room_id: session.gameRoomId });
+
+        const handlePlayerJoined = (data) => {
+            if (data.game_room_id === session.gameRoomId) {
+                setOpponentReady(true);
+                console.log(`🎮 Opponent ${data.username} joined!`);
+            }
+        };
+
+        const handleMoveMade = (data) => {
+            if (data.game_room_id !== session.gameRoomId) return;
+            const cellIndex = data.move;
+            const currentBoard = [...boardRef.current];
+            if (currentBoard[cellIndex] || cellIndex === undefined) return;
+
+            currentBoard[cellIndex] = data.user_id === session.challengerId ? 'X' : 'O';
+            setBoard(currentBoard);
+            sounds.place();
+            const result = checkWinner(currentBoard);
+            if (result) {
+                handleEndGame(result, currentBoard);
+            } else {
+                setIsMyTurn(true);
+            }
+        };
+
+        const handlePlayerLeft = (data) => {
+            if (data.game_room_id === session.gameRoomId) {
+                toast.error(`${data.username} left the game`);
+                setOpponentReady(false);
+            }
+        };
+
+        chatSocket.on('game:player_joined', handlePlayerJoined);
+        chatSocket.on('game:move_made', handleMoveMade);
+        chatSocket.on('game:player_left', handlePlayerLeft);
+
+        return () => {
+            chatSocket.off('game:player_joined', handlePlayerJoined);
+            chatSocket.off('game:move_made', handleMoveMade);
+            chatSocket.off('game:player_left', handlePlayerLeft);
+            chatSocket.emit('game_leave', { game_room_id: session.gameRoomId });
+        };
+    }, [session.gameRoomId]); // eslint-disable-line
+
+    const handleEndGame = useCallback((result, currentBoard) => {
+        setGameOver(true);
+        if (result.winner === 'draw') {
+            setResultText('═ DRAW');
+            setResultType('draw');
+            setScore(prev => ({ ...prev, draws: prev.draws + 1 }));
+            sounds.draw();
+        } else if (result.winner === myMark) {
+            setResultText('▲ YOU WIN');
+            setResultType('win');
+            setWinLine(result.line);
+            setScore(prev => ({ ...prev, me: prev.me + 1 }));
+            sounds.win();
+        } else {
+            setResultText(`▼ ${session.theirName} WINS`);
+            setResultType('lose');
+            setWinLine(result.line);
+            setScore(prev => ({ ...prev, them: prev.them + 1 }));
+            sounds.lose();
+        }
+    }, [myMark, session.theirName]); // eslint-disable-line
+
+    const handleCellClick = (index) => {
+        if (!isMyTurn || board[index] || gameOver) return;
+        const newBoard = [...board];
+        newBoard[index] = myMark;
+        setBoard(newBoard);
+        setIsMyTurn(false);
+        sounds.place();
+
+        // Send move to opponent via socket
+        if (chatSocket) {
+            chatSocket.emit('game_move', {
+                game_room_id: session.gameRoomId,
+                move: index,
+            });
+        }
+
+        const result = checkWinner(newBoard);
+        if (result) handleEndGame(result, newBoard);
+    };
+
+    const resetGame = () => {
+        setBoard(Array(9).fill(null));
+        setIsMyTurn(iGoFirst);
+        setGameOver(false);
+        setWinLine(null);
+        setResultText('');
+        setResultType('');
+    };
+
+    const handleLeaveGame = () => {
+        if (chatSocket) {
+            chatSocket.emit('game_leave', { game_room_id: session.gameRoomId });
+        }
+        onBack();
+    };
+
+    const renderCell = (index) => {
+        const value = board[index];
+        const isWinCell = winLine && winLine.includes(index);
+        const isEmpty = !value && !gameOver;
+        const isHovered = hoveredCell === index && isEmpty && isMyTurn;
+        return (
+            <button
+                key={index}
+                style={{
+                    ...st.cell,
+                    ...(isHovered ? st.cellHover : {}),
+                    ...(isWinCell ? st.cellWin : {}),
+                    cursor: isEmpty && isMyTurn ? 'pointer' : 'default',
+                }}
+                onClick={() => handleCellClick(index)}
+                onMouseEnter={() => setHoveredCell(index)}
+                onMouseLeave={() => setHoveredCell(null)}
+            >
+                {value === 'X' && (
+                    <X size={48} strokeWidth={3} color="#fb7185"
+                        style={{ filter: 'drop-shadow(0 0 10px rgba(251,113,133,0.8))', animation: 'tttPop 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}
+                    />
+                )}
+                {value === 'O' && (
+                    <Circle size={44} strokeWidth={3} color="#22d3ee"
+                        style={{ filter: 'drop-shadow(0 0 10px rgba(34,211,238,0.8))', animation: 'tttPop 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}
+                    />
+                )}
+                {isHovered && !value && (
+                    myMark === 'X'
+                        ? <X size={48} strokeWidth={3} color="rgba(251,113,133,0.15)" />
+                        : <Circle size={44} strokeWidth={3} color="rgba(34,211,238,0.15)" />
+                )}
+            </button>
+        );
+    };
+
+    const statusColor = resultType === 'win' ? '#39d98a' : resultType === 'lose' ? '#ff4f7b' : resultType === 'draw' ? '#ffca40' : 'rgba(240,240,245,0.55)';
+    const statusBg = resultType === 'win' ? 'rgba(57,217,138,0.12)' : resultType === 'lose' ? 'rgba(255,79,123,0.12)' : resultType === 'draw' ? 'rgba(255,202,64,0.12)' : '#1e1e24';
+    const statusBorder = resultType === 'win' ? '#39d98a' : resultType === 'lose' ? '#ff4f7b' : resultType === 'draw' ? '#ffca40' : 'rgba(255,255,255,0.08)';
+    const currentStatus = gameOver
+        ? resultText
+        : isMyTurn
+            ? `● Your turn — place ${myMark}`
+            : `● Waiting for ${session.theirName}…`;
+
+    return (
+        <div style={st.container}>
+            <div style={st.header}>
+                <button style={st.headerBtn} onClick={handleLeaveGame}>
+                    <ArrowLeft size={16} style={{ marginRight: 6 }} /> Leave
+                </button>
+                <div style={{ ...st.modeBadge, background: 'rgba(34,211,238,0.1)', borderColor: 'rgba(34,211,238,0.3)', color: '#22d3ee' }}>
+                    <Wifi size={12} style={{ marginRight: 6 }} /> VS {session.theirName}
+                </div>
+                <div style={{ width: 80 }} />
+            </div>
+
+            <div style={st.scoreboard}>
+                <div style={st.scoreBlock}>
+                    <span style={st.scoreLabel}>
+                        {session.myName} ({myMark})
+                    </span>
+                    <span style={{ ...st.scoreNum, color: myMark === 'X' ? '#fb7185' : '#22d3ee' }}>{score.me}</span>
+                </div>
+                <div style={st.scoreCenter}>
+                    <div style={st.drawsBadge}>Draws: {score.draws}</div>
+                </div>
+                <div style={st.scoreBlock}>
+                    <span style={st.scoreLabel}>
+                        {session.theirName} ({theirMark})
+                    </span>
+                    <span style={{ ...st.scoreNum, color: theirMark === 'X' ? '#fb7185' : '#22d3ee' }}>{score.them}</span>
+                </div>
+            </div>
+
+            <div style={{ ...st.statusBanner, background: statusBg, borderColor: statusBorder }}>
+                <span style={{ ...st.statusText, color: statusColor }}>{currentStatus}</span>
+            </div>
+
+            <div style={st.boardContainer}>
+                <div style={st.board}>
+                    {winLine && <div style={getStrikeStyle(winLine)} />}
+                    {board.map((_, i) => renderCell(i))}
+                </div>
+            </div>
+
+            {gameOver && (
+                <div style={st.playAgainWrap}>
+                    <button style={st.playAgainBtn} onClick={resetGame}>Play Again</button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+// ═══════════════════════════════════════════════════
 // MAIN TicTacToe — mode router
 // ═══════════════════════════════════════════════════
-const TicTacToe = ({ onBack }) => {
+const TicTacToe = ({ onBack, multiplayerSession }) => {
     const [mode, setMode] = useState('lobby'); // 'lobby' | 'cpu' | 'friends'
+
+    // If launched with a multiplayer session (from game:start), go straight to multiplayer
+    if (multiplayerSession) {
+        return <MultiplayerGameView session={multiplayerSession} onBack={onBack} />;
+    }
 
     if (mode === 'cpu') {
         return <CPUGameView onBack={onBack} onBackToLobby={() => setMode('lobby')} />;

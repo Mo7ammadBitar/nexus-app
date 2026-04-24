@@ -1,5 +1,7 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { ArrowLeft, RotateCcw, Hexagon, FileText, Scissors, HelpCircle, Loader } from 'lucide-react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { ArrowLeft, RotateCcw, Hexagon, FileText, Scissors, HelpCircle, Loader, Wifi } from 'lucide-react';
+import { chatSocket } from '../../services/socket';
+import { toast } from 'react-hot-toast';
 
 // ── SOUND ENGINE (Web Audio API — no files needed) ──
 const createSoundEngine = () => {
@@ -74,7 +76,278 @@ const getCpuMove = () => MOVES[Math.floor(Math.random() * 3)];
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-const RockPaperScissors = ({ onBack }) => {
+
+// ═══════════════════════════════════════════════════
+// MULTIPLAYER RPS VIEW — Real-time 2-player via Socket.IO
+// ═══════════════════════════════════════════════════
+const MultiplayerRPSView = ({ session, onBack }) => {
+    const soundsRef = useRef(null);
+    if (!soundsRef.current) soundsRef.current = createSoundEngine();
+    const sounds = soundsRef.current;
+
+    const [score, setScore] = useState({ me: 0, them: 0, draws: 0 });
+    const [round, setRound] = useState(1);
+    const [myMove, setMyMove] = useState(null);       // my chosen move
+    const [theirMove, setTheirMove] = useState(null);  // from socket
+    const [p1Choice, setP1Choice] = useState({ move: 'waiting', name: 'Waiting…', state: '' });
+    const [p2Choice, setP2Choice] = useState({ move: 'waiting', name: 'Waiting…', state: '' });
+    const [resultText, setResultText] = useState('Make your move!');
+    const [resultClass, setResultClass] = useState('');
+    const [locked, setLocked] = useState(false);
+    const [selectedMove, setSelectedMove] = useState(null);
+    const [flashClass, setFlashClass] = useState('');
+    const [recentRounds, setRecentRounds] = useState([]);
+
+    const myMoveRef = useRef(null);
+    const theirMoveRef = useRef(null);
+
+    const capitalize = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
+
+    // Resolve round when both moves are in
+    const resolveRound = useCallback((mine, theirs) => {
+        const result = getResult(mine, theirs);
+        const myState = result === 'win' ? 'win' : result === 'lose' ? 'lose' : 'draw';
+        const theirState = result === 'lose' ? 'win' : result === 'win' ? 'lose' : 'draw';
+
+        setP1Choice({ move: mine, name: capitalize(mine), state: myState });
+        setP2Choice({ move: theirs, name: capitalize(theirs), state: theirState });
+
+        const resultTexts = { win: '▲ YOU WIN', lose: '▼ YOU LOSE', draw: '═ DRAW' };
+        setResultText(resultTexts[result]);
+        setResultClass(result);
+
+        if (result === 'win') sounds.win();
+        else if (result === 'lose') sounds.lose();
+        else sounds.draw();
+
+        setFlashClass(result);
+        setTimeout(() => setFlashClass(''), 400);
+
+        setScore(prev => ({
+            me: prev.me + (result === 'win' ? 1 : 0),
+            them: prev.them + (result === 'lose' ? 1 : 0),
+            draws: prev.draws + (result === 'draw' ? 1 : 0),
+        }));
+
+        setRecentRounds(prev => [
+            { p1: mine, p2: theirs, result, round },
+            ...prev,
+        ].slice(0, 5));
+
+        setRound(r => r + 1);
+
+        // Unlock after brief delay
+        setTimeout(() => {
+            setSelectedMove(null);
+            setLocked(false);
+            setMyMove(null);
+            setTheirMove(null);
+            myMoveRef.current = null;
+            theirMoveRef.current = null;
+        }, 1200);
+    }, [round, sounds]);
+
+    // Socket setup
+    useEffect(() => {
+        if (!chatSocket) return;
+
+        chatSocket.emit('game_join_room', { game_room_id: session.gameRoomId });
+
+        const handleMoveMade = (data) => {
+            if (data.game_room_id !== session.gameRoomId) return;
+            const opponentMove = data.move_type;
+            if (!opponentMove) return;
+
+            theirMoveRef.current = opponentMove;
+            setTheirMove(opponentMove);
+
+            // If I've already moved, resolve now
+            if (myMoveRef.current) {
+                resolveRound(myMoveRef.current, opponentMove);
+            }
+        };
+
+        const handlePlayerLeft = (data) => {
+            if (data.game_room_id === session.gameRoomId) {
+                toast.error(`${data.username} left the game`);
+            }
+        };
+
+        chatSocket.on('game:move_made', handleMoveMade);
+        chatSocket.on('game:player_left', handlePlayerLeft);
+
+        return () => {
+            chatSocket.off('game:move_made', handleMoveMade);
+            chatSocket.off('game:player_left', handlePlayerLeft);
+            chatSocket.emit('game_leave', { game_room_id: session.gameRoomId });
+        };
+    }, [session.gameRoomId]); // eslint-disable-line
+
+    const handleMove = (move) => {
+        if (locked) return;
+        setLocked(true);
+        setSelectedMove(move);
+        setMyMove(move);
+        myMoveRef.current = move;
+        sounds.select();
+
+        // Show thinking states
+        setP1Choice({ move: 'thinking', name: 'Locked In!', state: '' });
+        setP2Choice({ move: 'thinking', name: `Waiting for ${session.theirName}…`, state: '' });
+        setResultText('Waiting for opponent…');
+        setResultClass('');
+
+        // Send move to opponent
+        if (chatSocket) {
+            chatSocket.emit('game_move', {
+                game_room_id: session.gameRoomId,
+                move_type: move,
+            });
+        }
+
+        // If opponent already moved, resolve
+        if (theirMoveRef.current) {
+            setTimeout(() => resolveRound(move, theirMoveRef.current), 400);
+        }
+    };
+
+    const handleLeaveGame = () => {
+        if (chatSocket) {
+            chatSocket.emit('game_leave', { game_room_id: session.gameRoomId });
+        }
+        onBack();
+    };
+
+    return (
+        <div style={s.container}>
+            {/* Flash overlay */}
+            {flashClass && (
+                <div style={{
+                    ...s.flashOverlay,
+                    background: flashClass === 'win' ? 'rgba(57,217,138,0.15)'
+                        : flashClass === 'lose' ? 'rgba(255,79,123,0.15)'
+                        : 'rgba(255,202,64,0.1)',
+                }} />
+            )}
+
+            {/* Header */}
+            <div style={s.header}>
+                <button style={s.headerBtn} onClick={handleLeaveGame}>
+                    <ArrowLeft size={16} style={{ marginRight: 6 }} /> Leave
+                </button>
+                <div style={{ ...s.modeBadge, background: 'rgba(34,211,238,0.1)', borderColor: 'rgba(34,211,238,0.3)', color: '#22d3ee' }}>
+                    <Wifi size={12} style={{ marginRight: 6 }} /> VS {session.theirName}
+                </div>
+                <div style={{ width: 80 }} />
+            </div>
+
+            {/* Scoreboard */}
+            <div style={s.scoreboard}>
+                <div style={s.scoreBlock}>
+                    <span style={s.scoreLabel}>{session.myName}</span>
+                    <span style={{ ...s.scoreNum, color: '#c084fc' }}>{score.me}</span>
+                </div>
+                <div style={s.scoreCenter}>
+                    <span style={s.drawsBadge}>Draws: {score.draws}</span>
+                    <span style={s.roundBadge}>Round {round}</span>
+                </div>
+                <div style={s.scoreBlock}>
+                    <span style={s.scoreLabel}>{session.theirName}</span>
+                    <span style={{ ...s.scoreNum, color: '#fb7185' }}>{score.them}</span>
+                </div>
+            </div>
+
+            {/* Arena */}
+            <div style={s.arena}>
+                <div style={s.arenaSide}>
+                    <div style={{
+                        ...s.choiceDisplay,
+                        borderColor: p1Choice.state === 'win' ? '#39d98a' : p1Choice.state === 'lose' ? '#ff4f7b' : 'rgba(255,255,255,0.08)',
+                        boxShadow: p1Choice.state === 'win' ? '0 0 24px rgba(57,217,138,0.3)' : 'none',
+                    }}>
+                        <MoveIcon move={p1Choice.move} size={40} />
+                        <span style={s.choiceName}>{p1Choice.name}</span>
+                        <span style={s.choiceSub}>You</span>
+                    </div>
+                </div>
+
+                <div style={s.arenaVs}>
+                    <span style={s.vsText}>VS</span>
+                    <div style={{
+                        ...s.resultBanner,
+                        borderColor: resultClass === 'win' ? '#39d98a' : resultClass === 'lose' ? '#ff4f7b' : resultClass === 'draw' ? '#ffca40' : 'rgba(255,255,255,0.08)',
+                        background: resultClass === 'win' ? 'rgba(57,217,138,0.12)' : resultClass === 'lose' ? 'rgba(255,79,123,0.12)' : resultClass === 'draw' ? 'rgba(255,202,64,0.12)' : '#1e1e24',
+                    }}>
+                        <span style={{
+                            ...s.resultText,
+                            color: resultClass === 'win' ? '#39d98a' : resultClass === 'lose' ? '#ff4f7b' : resultClass === 'draw' ? '#ffca40' : 'rgba(240,240,245,0.35)',
+                        }}>{resultText}</span>
+                    </div>
+                </div>
+
+                <div style={s.arenaSide}>
+                    <div style={{
+                        ...s.choiceDisplay,
+                        borderColor: p2Choice.state === 'win' ? '#39d98a' : p2Choice.state === 'lose' ? '#ff4f7b' : 'rgba(255,255,255,0.08)',
+                        boxShadow: p2Choice.state === 'win' ? '0 0 24px rgba(57,217,138,0.3)' : 'none',
+                    }}>
+                        <MoveIcon move={p2Choice.move} size={40} />
+                        <span style={s.choiceName}>{p2Choice.name}</span>
+                        <span style={s.choiceSub}>{session.theirName}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Move Buttons */}
+            <div style={s.moveButtons}>
+                {MOVES.map(move => (
+                    <button
+                        key={move}
+                        style={{
+                            ...s.moveBtn,
+                            ...(selectedMove === move ? s.moveBtnSelected : {}),
+                            ...(locked ? s.moveBtnDisabled : {}),
+                        }}
+                        onClick={() => handleMove(move)}
+                        disabled={locked}
+                    >
+                        <MoveIcon move={move} size={28} />
+                        <span style={s.moveName}>{capitalize(move)}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Recent Rounds */}
+            {recentRounds.length > 0 && (
+                <div style={s.historyWrap}>
+                    <div style={s.historyTitle}>Recent Rounds</div>
+                    {recentRounds.map((r, i) => (
+                        <div key={i} style={s.historyRow}>
+                            <span style={s.historyRound}>R{r.round}</span>
+                            <MoveIcon move={r.p1} size={16} />
+                            <span style={s.historyVs}>vs</span>
+                            <MoveIcon move={r.p2} size={16} />
+                            <span style={{
+                                ...s.historyResult,
+                                color: r.result === 'win' ? '#39d98a' : r.result === 'lose' ? '#ff4f7b' : '#ffca40',
+                            }}>
+                                {r.result === 'win' ? 'Won' : r.result === 'lose' ? 'Lost' : 'Draw'}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+const RockPaperScissors = ({ onBack, multiplayerSession }) => {
+    // If launched with a multiplayer session (from game:start), go straight to multiplayer
+    if (multiplayerSession) {
+        return <MultiplayerRPSView session={multiplayerSession} onBack={onBack} />;
+    }
+
     const soundsRef = useRef(null);
     if (!soundsRef.current) soundsRef.current = createSoundEngine();
     const sounds = soundsRef.current;
