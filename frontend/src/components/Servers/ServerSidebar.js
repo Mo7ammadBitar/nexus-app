@@ -178,7 +178,10 @@ const ServerSidebar = ({ onOpenFriends, onOpenPrime }) => {
                 {/* Prime Button */}
                 <TouchableOpacity
                     style={styles.primeIcon}
-                    onPress={onOpenPrime}
+                    onPress={() => {
+                        if (onOpenPrime) onOpenPrime();
+                        useUIStore.getState().setMobileView('chat');
+                    }}
                     title="Nexus Prime"
                 >
                     <Crown size={24} color="#a855f7" />
