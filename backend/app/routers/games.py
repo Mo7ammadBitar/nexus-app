@@ -39,11 +39,13 @@ def _serialize_message(doc: dict) -> dict:
         return None
     doc["_id"] = str(doc["_id"])
     if "timestamp" in doc and isinstance(doc["timestamp"], datetime):
-        doc["timestamp"] = doc["timestamp"].isoformat()
+        # Add Z to indicate UTC so frontend parses it correctly
+        doc["timestamp"] = doc["timestamp"].isoformat() + "Z"
+    
     # Serialize nested challenge_data datetimes
     cd = doc.get("challenge_data")
     if cd and "expires_at" in cd and isinstance(cd["expires_at"], datetime):
-        cd["expires_at"] = cd["expires_at"].isoformat()
+        cd["expires_at"] = cd["expires_at"].isoformat() + "Z"
     return doc
 
 
@@ -61,12 +63,13 @@ async def _check_friendship(user_id: str, friend_id: str) -> bool:
 
 def _build_socket_payload(msg_doc: dict, sender_user: dict) -> dict:
     """Build the standard dm_new_message socket payload."""
+    timestamp = msg_doc["timestamp"]
     return {
         "_id": str(msg_doc["_id"]),
         "content": msg_doc.get("content"),
         "sender_id": str(msg_doc["sender_id"]),
         "receiver_id": str(msg_doc["receiver_id"]),
-        "timestamp": msg_doc["timestamp"].isoformat() if isinstance(msg_doc["timestamp"], datetime) else str(msg_doc["timestamp"]),
+        "timestamp": timestamp.isoformat() + "Z" if isinstance(timestamp, datetime) else str(timestamp),
         "attachments": msg_doc.get("attachments", []),
         "is_read": msg_doc.get("is_read", False),
         "type": msg_doc.get("type", "text"),
@@ -95,7 +98,8 @@ async def create_challenge(
       - Chat history persistence
       - Standard socket delivery
     """
-    challenger_id = current_user["_id"]
+    # Fix ObjectId vs string bug by casting current_user["_id"] to str
+    challenger_id = str(current_user["_id"])
     opponent_id = body.opponent_id
 
     # Validate not self-challenge
@@ -145,8 +149,13 @@ async def create_challenge(
             detail="You already have a pending challenge with this user.",
         )
 
-    challenger_name = current_user.get("display_name") or current_user.get("username", "Unknown")
-    opponent_name = opponent.get("display_name") or opponent.get("username", "Unknown")
+    # Fix: use empty string fallback so it moves to username if display_name is ""
+    challenger_display = current_user.get("display_name")
+    challenger_name = challenger_display if challenger_display else current_user.get("username", "Unknown")
+    
+    opponent_display = opponent.get("display_name")
+    opponent_name = opponent_display if opponent_display else opponent.get("username", "Unknown")
+    
     game_label = GAME_LABELS.get(body.game_type, body.game_type)
 
     # Create challenge as a DM message
