@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { X, Swords, Hexagon, FileText, Scissors, Circle, Grid3x3, Send, Zap } from 'lucide-react';
 import { gamesAPI } from '../../services/api';
-import { useFriendsStore } from '../../store/friendsStore';
 import { toast } from 'react-hot-toast';
 
 const GAMES = [
@@ -47,10 +46,8 @@ const ChallengeModal = ({ isOpen, onClose, friendId, friendName }) => {
         }
         setSending(true);
         try {
-            const res = await gamesAPI.sendChallenge(friendId, selectedGame, wagerText);
-            const challenge = res.data.challenge;
-            // Add to local state so the sender also sees the card
-            useFriendsStore.getState().addGameChallenge(challenge);
+            await gamesAPI.sendChallenge(friendId, selectedGame, wagerText);
+            // Challenge appears in DM chat automatically via dm_new_message socket event
             toast.success(`Challenge sent to ${friendName}!`);
             onClose();
             setSelectedGame(null);

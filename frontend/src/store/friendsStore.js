@@ -15,19 +15,7 @@ export const useFriendsStore = create((set, get) => ({
     unreadCounts: {},  // { friendId: count }
     totalUnread: 0,
 
-    // Game challenge state
-    gameChallenges: [],  // array of challenge objects in the current DM
-    addGameChallenge: (challenge) => set(state => {
-        const exists = state.gameChallenges.some(c => c._id === challenge._id);
-        if (exists) return {};
-        return { gameChallenges: [...state.gameChallenges, challenge] };
-    }),
-    updateGameChallenge: (challengeId, updates) => set(state => ({
-        gameChallenges: state.gameChallenges.map(c =>
-            c._id === challengeId ? { ...c, ...updates } : c
-        ),
-    })),
-    clearGameChallenges: () => set({ gameChallenges: [] }),
+
 
     // Fetch all friends
     fetchFriends: async () => {
@@ -309,7 +297,7 @@ export const useFriendsStore = create((set, get) => ({
 
     // Close DM
     closeDM: () => {
-        set({ currentDMFriend: null, dmMessages: [], pinnedMessages: [], gameChallenges: [] });
+        set({ currentDMFriend: null, dmMessages: [], pinnedMessages: [] });
     },
 
     // Clear friends panel state
@@ -407,32 +395,18 @@ export const useFriendsStore = create((set, get) => ({
             );
         });
 
-        // 3. LISTENER FOR GAME CHALLENGES
-        socket.off('game:challenge_received');
-        socket.on('game:challenge_received', (challenge) => {
-            console.log('🎮 Game challenge received:', challenge);
-            const state = get();
-            // If DM with challenger is open, inject into challenges
-            const isCurrentChat = state.currentDMFriend &&
-                (state.currentDMFriend._id === challenge.challenger_id ||
-                    state.currentDMFriend.id === challenge.challenger_id);
-            if (isCurrentChat) {
-                get().addGameChallenge(challenge);
-            }
-            // Show notification
-            const gameLabel = challenge.game_type === 'tic-tac-toe' ? 'Tic-Tac-Toe' : 'Rock Paper Scissors';
-            showNativeNotification(
-                `Game Challenge from ${challenge.challenger_name}`,
-                `${challenge.challenger_name} challenged you to ${gameLabel}!`,
-                { skipFocusCheck: true }
-            );
-        });
-
-        socket.off('game:challenge_accepted');
-        socket.on('game:challenge_accepted', (challenge) => {
-            console.log('🎮 Challenge accepted:', challenge);
-            get().updateGameChallenge(challenge._id, { status: 'accepted' });
-            // Note: actual navigation is handled by the game:start event
+        // 3. LISTENER FOR DM_UPDATED — handles challenge card status changes
+        // When a challenge is accepted/declined/expired, the server emits dm_updated
+        // with the new challenge_data. We patch it into the dmMessages array.
+        socket.off('dm_updated');
+        socket.on('dm_updated', (updatedMsg) => {
+            console.log('📝 DM updated:', updatedMsg);
+            if (!updatedMsg._id) return;
+            set(state => ({
+                dmMessages: state.dmMessages.map(msg =>
+                    msg._id === updatedMsg._id ? { ...msg, ...updatedMsg } : msg
+                ),
+            }));
         });
 
         // 4. LISTENER FOR GAME START — Auto-navigate both players into the game
@@ -446,7 +420,6 @@ export const useFriendsStore = create((set, get) => ({
             const opponentName = isChallenger ? gameData.opponent_name : gameData.challenger_name;
             
             // Import and set the UI store to navigate to the game
-            // We import dynamically to avoid circular dependencies
             const { useUIStore } = require('./uiStore');
             useUIStore.getState().setActiveMultiplayerGame({
                 gameRoomId: gameData.game_room_id,
@@ -460,17 +433,6 @@ export const useFriendsStore = create((set, get) => ({
                 myName: isChallenger ? gameData.challenger_name : gameData.opponent_name,
                 theirName: opponentName,
             });
-        });
-
-        socket.off('game:challenge_declined');
-        socket.on('game:challenge_declined', (challenge) => {
-            console.log('🎮 Challenge declined:', challenge);
-            get().updateGameChallenge(challenge._id, { status: 'declined' });
-            showNativeNotification(
-                'Challenge Declined',
-                `${challenge.opponent_name} declined your challenge.`,
-                { skipFocusCheck: true }
-            );
         });
     },
 

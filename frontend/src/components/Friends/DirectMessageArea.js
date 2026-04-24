@@ -90,13 +90,13 @@ const DirectMessageArea = () => {
         pinMessage,
         unpinMessage,
         closeDM,
-        gameChallenges,
-        updateGameChallenge,
     } = useFriendsStore();
     const { user } = useAuthStore();
     const [message, setMessage] = useState('');
     const [sending, setSending] = useState(false);
     const [showChallengeModal, setShowChallengeModal] = useState(false);
+    const [acceptingChallengeId, setAcceptingChallengeId] = useState(null);
+    const [decliningChallengeId, setDecliningChallengeId] = useState(null);
     const [hoveredMessageId, setHoveredMessageId] = useState(null);
     const [editingMessageId, setEditingMessageId] = useState(null);
     const [editContent, setEditContent] = useState('');
@@ -819,6 +819,53 @@ const DirectMessageArea = () => {
                             </View>
                             {msgs.map((msg) => {
                                 const isOwnMessage = msg.sender_id === user?._id;
+
+                                // ── GAME CHALLENGE MESSAGE ──
+                                // Render GameInviteCard inline instead of a regular message bubble
+                                if (msg.type === 'game_challenge') {
+                                    const cd = msg.challenge_data || {};
+                                    const isSender = isOwnMessage;
+                                    const gameLabel = cd.game_type === 'tic-tac-toe' ? 'Tic-Tac-Toe' : 'Rock Paper Scissors';
+                                    return (
+                                        <div key={msg._id} style={{ padding: '6px 16px', display: 'flex', justifyContent: isSender ? 'flex-end' : 'flex-start' }}>
+                                            <GameInviteCard
+                                                challengerName={cd.challenger_name}
+                                                gameName={gameLabel}
+                                                wagerText={cd.wager_text}
+                                                status={cd.status}
+                                                isSender={isSender}
+                                                opponentName={cd.opponent_name}
+                                                expiresAt={cd.expires_at}
+                                                accepting={acceptingChallengeId === msg._id}
+                                                declining={decliningChallengeId === msg._id}
+                                                onAccept={async () => {
+                                                    setAcceptingChallengeId(msg._id);
+                                                    try {
+                                                        await gamesAPI.acceptChallenge(msg._id);
+                                                    } catch (err) {
+                                                        const errMsg = err.response?.data?.detail || 'Failed to accept.';
+                                                        toast.error(errMsg);
+                                                    } finally {
+                                                        setAcceptingChallengeId(null);
+                                                    }
+                                                }}
+                                                onDecline={async () => {
+                                                    setDecliningChallengeId(msg._id);
+                                                    try {
+                                                        await gamesAPI.declineChallenge(msg._id);
+                                                    } catch (err) {
+                                                        const errMsg = err.response?.data?.detail || 'Failed to decline.';
+                                                        toast.error(errMsg);
+                                                    } finally {
+                                                        setDecliningChallengeId(null);
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    );
+                                }
+
+                                // ── REGULAR MESSAGE ──
                                 const isOracleMessage = msg.sender_id === ORACLE_ID;
                                 const isHovered = hoveredMessageId === msg._id;
                                 const isEditing = editingMessageId === msg._id;
@@ -1137,43 +1184,7 @@ const DirectMessageArea = () => {
                 )}
             </ScrollView >
 
-            {/* Game Challenge Cards */}
-            {gameChallenges.length > 0 && (
-                <div style={{ padding: '8px 16px', background: 'var(--bg-primary)' }}>
-                    {gameChallenges.map(challenge => {
-                        const isOpponent = challenge.opponent_id === user?._id;
-                        const gameLabel = challenge.game_type === 'tic-tac-toe' ? 'Tic-Tac-Toe' : 'Rock Paper Scissors';
-                        return (
-                            <div key={challenge._id} style={{ marginBottom: 8 }}>
-                                <GameInviteCard
-                                    challengerName={challenge.challenger_name}
-                                    gameName={gameLabel}
-                                    wagerText={challenge.wager_text}
-                                    status={challenge.status}
-                                    onAccept={async () => {
-                                        try {
-                                            await gamesAPI.acceptChallenge(challenge._id);
-                                            updateGameChallenge(challenge._id, { status: 'accepted' });
-                                        } catch (err) {
-                                            const msg = err.response?.data?.detail || 'Failed to accept.';
-                                            toast.error(msg);
-                                        }
-                                    }}
-                                    onDecline={async () => {
-                                        try {
-                                            await gamesAPI.declineChallenge(challenge._id);
-                                            updateGameChallenge(challenge._id, { status: 'declined' });
-                                        } catch (err) {
-                                            const msg = err.response?.data?.detail || 'Failed to decline.';
-                                            toast.error(msg);
-                                        }
-                                    }}
-                                />
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
+
 
             {/* Input */}
             {/* File Preview */}

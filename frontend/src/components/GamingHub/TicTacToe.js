@@ -225,9 +225,8 @@ const FriendPickerView = ({ onBack, onBackToLobby }) => {
         const fId = friend._id || friend.id;
         setSending(fId);
         try {
-            const res = await gamesAPI.sendChallenge(fId, 'tic-tac-toe');
-            const challenge = res.data.challenge;
-            useFriendsStore.getState().addGameChallenge(challenge);
+            await gamesAPI.sendChallenge(fId, 'tic-tac-toe');
+            // Challenge appears in DM chat automatically via dm_new_message socket event
             setSentTo({ id: fId, name: friend.display_name || friend.username });
             toast.success(`Challenge sent to ${friend.display_name || friend.username}!`);
         } catch (err) {

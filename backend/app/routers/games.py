@@ -1,6 +1,10 @@
 """
-Game Challenges Routes
-Real-time game invitations between friends in DMs.
+Game Challenges Routes — Unified Message Architecture
+Challenges are stored as regular DM messages with type='game_challenge'
+and a challenge_data JSON payload. This ensures:
+  - Unread badge increments naturally
+  - Challenge persists in chat history across reloads
+  - Standard dm_new_message / dm_updated socket delivery
 """
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
@@ -9,13 +13,14 @@ from datetime import datetime, timedelta
 from bson import ObjectId
 
 from app.middleware.auth import get_current_user
-from app.database import get_game_challenges_collection, get_users_collection, get_friends_collection
+from app.database import get_direct_messages_collection, get_users_collection, get_friends_collection
 from app.socket_instance import sio
 
 router = APIRouter(prefix="/games", tags=["Games"])
 
 CHALLENGE_TTL_MINUTES = 5
 VALID_GAME_TYPES = ["tic-tac-toe", "rps"]
+GAME_LABELS = {"tic-tac-toe": "Tic-Tac-Toe", "rps": "Rock Paper Scissors"}
 
 
 # ── Schemas ──
@@ -28,14 +33,17 @@ class CreateChallengeRequest(BaseModel):
 
 # ── Helpers ──
 
-def serialize_challenge(doc: dict) -> dict:
-    """Convert MongoDB doc to JSON-safe dict."""
+def _serialize_message(doc: dict) -> dict:
+    """Convert MongoDB DM message doc to JSON-safe dict."""
     if doc is None:
         return None
     doc["_id"] = str(doc["_id"])
-    for key in ("created_at", "expires_at"):
-        if key in doc and isinstance(doc[key], datetime):
-            doc[key] = doc[key].isoformat()
+    if "timestamp" in doc and isinstance(doc["timestamp"], datetime):
+        doc["timestamp"] = doc["timestamp"].isoformat()
+    # Serialize nested challenge_data datetimes
+    cd = doc.get("challenge_data")
+    if cd and "expires_at" in cd and isinstance(cd["expires_at"], datetime):
+        cd["expires_at"] = cd["expires_at"].isoformat()
     return doc
 
 
@@ -51,6 +59,27 @@ async def _check_friendship(user_id: str, friend_id: str) -> bool:
     return friendship is not None
 
 
+def _build_socket_payload(msg_doc: dict, sender_user: dict) -> dict:
+    """Build the standard dm_new_message socket payload."""
+    return {
+        "_id": str(msg_doc["_id"]),
+        "content": msg_doc.get("content"),
+        "sender_id": str(msg_doc["sender_id"]),
+        "receiver_id": str(msg_doc["receiver_id"]),
+        "timestamp": msg_doc["timestamp"].isoformat() if isinstance(msg_doc["timestamp"], datetime) else str(msg_doc["timestamp"]),
+        "attachments": msg_doc.get("attachments", []),
+        "is_read": msg_doc.get("is_read", False),
+        "type": msg_doc.get("type", "text"),
+        "challenge_data": msg_doc.get("challenge_data"),
+        "sender": {
+            "username": sender_user.get("username"),
+            "avatar_url": sender_user.get("avatar_url"),
+            "display_name": sender_user.get("display_name"),
+            "_id": str(sender_user["_id"]),
+        },
+    }
+
+
 # ── Endpoints ──
 
 @router.post("/challenge")
@@ -59,8 +88,12 @@ async def create_challenge(
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Send a game challenge to a friend.
-    Creates a challenge document and emits a socket event to the opponent.
+    Send a game challenge as a DM message.
+    The message has type='game_challenge' with a challenge_data payload.
+    It is stored in the direct_messages collection so it inherits:
+      - Unread badge tracking
+      - Chat history persistence
+      - Standard socket delivery
     """
     challenger_id = current_user["_id"]
     opponent_id = body.opponent_id
@@ -97,12 +130,14 @@ async def create_challenge(
         )
 
     # Check for existing pending challenge between these two users
-    challenges = get_game_challenges_collection()
-    existing = await challenges.find_one({
-        "challenger_id": challenger_id,
-        "opponent_id": opponent_id,
-        "status": "pending",
-        "expires_at": {"$gt": datetime.utcnow()},
+    dms = get_direct_messages_collection()
+    now = datetime.utcnow()
+    existing = await dms.find_one({
+        "sender_id": challenger_id,
+        "receiver_id": opponent_id,
+        "type": "game_challenge",
+        "challenge_data.status": "pending",
+        "challenge_data.expires_at": {"$gt": now},
     })
     if existing:
         raise HTTPException(
@@ -110,154 +145,198 @@ async def create_challenge(
             detail="You already have a pending challenge with this user.",
         )
 
-    # Create challenge document
-    now = datetime.utcnow()
-    challenge_doc = {
-        "challenger_id": challenger_id,
-        "challenger_name": current_user.get("display_name") or current_user.get("username", "Unknown"),
-        "opponent_id": opponent_id,
-        "opponent_name": opponent.get("display_name") or opponent.get("username", "Unknown"),
-        "game_type": body.game_type,
-        "wager_text": body.wager_text or "",
-        "status": "pending",
-        "created_at": now,
-        "expires_at": now + timedelta(minutes=CHALLENGE_TTL_MINUTES),
+    challenger_name = current_user.get("display_name") or current_user.get("username", "Unknown")
+    opponent_name = opponent.get("display_name") or opponent.get("username", "Unknown")
+    game_label = GAME_LABELS.get(body.game_type, body.game_type)
+
+    # Create challenge as a DM message
+    message_doc = {
+        "sender_id": challenger_id,
+        "receiver_id": opponent_id,
+        "content": f"🎮 {challenger_name} challenged you to {game_label}!",
+        "type": "game_challenge",
+        "challenge_data": {
+            "game_type": body.game_type,
+            "wager_text": body.wager_text or "",
+            "status": "pending",
+            "challenger_name": challenger_name,
+            "opponent_name": opponent_name,
+            "expires_at": now + timedelta(minutes=CHALLENGE_TTL_MINUTES),
+        },
+        "attachments": [],
+        "timestamp": now,
+        "is_read": False,
     }
 
-    result = await challenges.insert_one(challenge_doc)
-    challenge_doc["_id"] = result.inserted_id
+    result = await dms.insert_one(message_doc)
+    message_doc["_id"] = result.inserted_id
 
-    serialized = serialize_challenge(challenge_doc)
-
-    # Emit socket event to opponent
-    await sio.emit(
-        "game:challenge_received",
-        serialized,
-        room=f"user_{opponent_id}",
-        namespace="/chat",
-    )
-
-    return {"challenge": serialized}
-
-
-@router.post("/challenge/{challenge_id}/accept")
-async def accept_challenge(
-    challenge_id: str,
-    current_user: dict = Depends(get_current_user),
-):
-    """Accept a pending game challenge and start the game session."""
-    challenges = get_game_challenges_collection()
+    # Build and emit as standard dm_new_message to both users
+    payload = _build_socket_payload(message_doc, current_user)
 
     try:
-        doc = await challenges.find_one({"_id": ObjectId(challenge_id)})
+        # Emit to opponent (triggers unread badge naturally)
+        await sio.emit("dm_new_message", payload, room=str(opponent_id), namespace="/chat")
+        # Emit to sender (for multi-tab sync)
+        await sio.emit("dm_new_message", payload, room=str(challenger_id), namespace="/chat")
+    except Exception as e:
+        print(f"⚠️ Challenge Socket Emit Error: {e}")
+
+    serialized = _serialize_message(message_doc)
+    return {"challenge": serialized, "dm": serialized}
+
+
+@router.post("/challenge/{message_id}/accept")
+async def accept_challenge(
+    message_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Accept a pending game challenge.
+    Updates the challenge_data.status in the DM message and emits:
+      - dm_updated: so both clients re-render the card
+      - game:start: so both clients navigate to the game board
+    """
+    dms = get_direct_messages_collection()
+
+    try:
+        doc = await dms.find_one({"_id": ObjectId(message_id)})
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid challenge ID.")
+        raise HTTPException(status_code=400, detail="Invalid message ID.")
 
     if not doc:
         raise HTTPException(status_code=404, detail="Challenge not found.")
 
-    # Must be the opponent
-    if doc["opponent_id"] != current_user["_id"]:
+    # Verify it's a game challenge
+    if doc.get("type") != "game_challenge":
+        raise HTTPException(status_code=400, detail="This message is not a game challenge.")
+
+    cd = doc.get("challenge_data", {})
+
+    # Must be the receiver (opponent)
+    if doc["receiver_id"] != current_user["_id"]:
         raise HTTPException(status_code=403, detail="Only the challenged user can accept.")
 
     # Must be pending
-    if doc["status"] != "pending":
-        raise HTTPException(status_code=400, detail=f"Challenge is already {doc['status']}.")
+    if cd.get("status") != "pending":
+        raise HTTPException(status_code=400, detail=f"Challenge is already {cd.get('status')}.")
 
     # Must not be expired
-    if doc["expires_at"] < datetime.utcnow():
-        await challenges.update_one(
+    expires_at = cd.get("expires_at")
+    if isinstance(expires_at, datetime) and expires_at < datetime.utcnow():
+        await dms.update_one(
             {"_id": doc["_id"]},
-            {"$set": {"status": "expired"}},
+            {"$set": {"challenge_data.status": "expired"}},
         )
         raise HTTPException(status_code=400, detail="Challenge has expired.")
 
     # Generate unique game room ID
-    game_room_id = f"game_{challenge_id}"
+    game_room_id = f"game_{message_id}"
 
-    # Accept and persist the game room
-    await challenges.update_one(
+    # Update the challenge status in the DM message
+    await dms.update_one(
         {"_id": doc["_id"]},
-        {"$set": {"status": "accepted", "game_room_id": game_room_id}},
+        {"$set": {
+            "challenge_data.status": "accepted",
+            "challenge_data.game_room_id": game_room_id,
+        }},
     )
-    doc["status"] = "accepted"
-    doc["game_room_id"] = game_room_id
-    serialized = serialize_challenge(doc)
 
-    # Build the game start payload for both players
-    game_start_payload = {
-        "challenge_id": str(doc["_id"]),
-        "game_room_id": game_room_id,
-        "game_type": doc["game_type"],
-        "challenger_id": doc["challenger_id"],
-        "opponent_id": doc["opponent_id"],
-        "challenger_name": doc.get("challenger_name", "Player 1"),
-        "opponent_name": doc.get("opponent_name", "Player 2"),
+    # Re-fetch the updated doc for emission
+    updated_doc = await dms.find_one({"_id": doc["_id"]})
+    serialized = _serialize_message(updated_doc.copy())
+
+    # Build dm_updated payload (for card re-render)
+    updated_payload = {
+        "_id": str(updated_doc["_id"]),
+        "sender_id": str(updated_doc["sender_id"]),
+        "receiver_id": str(updated_doc["receiver_id"]),
+        "type": "game_challenge",
+        "challenge_data": serialized.get("challenge_data"),
     }
 
-    # Emit game:start to BOTH players so they both navigate to the game
-    await sio.emit(
-        "game:start",
-        game_start_payload,
-        room=f"user_{doc['challenger_id']}",
-        namespace="/chat",
-    )
-    await sio.emit(
-        "game:start",
-        game_start_payload,
-        room=f"user_{doc['opponent_id']}",
-        namespace="/chat",
-    )
+    challenger_id = doc["sender_id"]
+    opponent_id = doc["receiver_id"]
 
-    # Also emit the legacy challenge_accepted for UI card updates
-    await sio.emit(
-        "game:challenge_accepted",
-        serialized,
-        room=f"user_{doc['challenger_id']}",
-        namespace="/chat",
-    )
+    try:
+        # Emit dm_updated to both users so the card re-renders
+        await sio.emit("dm_updated", updated_payload, room=str(challenger_id), namespace="/chat")
+        await sio.emit("dm_updated", updated_payload, room=str(opponent_id), namespace="/chat")
+
+        # Emit game:start to both players for auto-navigation
+        game_start_payload = {
+            "challenge_id": str(doc["_id"]),
+            "game_room_id": game_room_id,
+            "game_type": cd["game_type"],
+            "challenger_id": challenger_id,
+            "opponent_id": opponent_id,
+            "challenger_name": cd.get("challenger_name", "Player 1"),
+            "opponent_name": cd.get("opponent_name", "Player 2"),
+        }
+        await sio.emit("game:start", game_start_payload, room=f"user_{challenger_id}", namespace="/chat")
+        await sio.emit("game:start", game_start_payload, room=f"user_{opponent_id}", namespace="/chat")
+    except Exception as e:
+        print(f"⚠️ Accept Challenge Socket Error: {e}")
 
     return {"challenge": serialized}
 
 
-@router.post("/challenge/{challenge_id}/decline")
+@router.post("/challenge/{message_id}/decline")
 async def decline_challenge(
-    challenge_id: str,
+    message_id: str,
     current_user: dict = Depends(get_current_user),
 ):
-    """Decline a pending game challenge."""
-    challenges = get_game_challenges_collection()
+    """
+    Decline a pending game challenge.
+    Updates the challenge_data.status in the DM message and emits dm_updated.
+    """
+    dms = get_direct_messages_collection()
 
     try:
-        doc = await challenges.find_one({"_id": ObjectId(challenge_id)})
+        doc = await dms.find_one({"_id": ObjectId(message_id)})
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid challenge ID.")
+        raise HTTPException(status_code=400, detail="Invalid message ID.")
 
     if not doc:
         raise HTTPException(status_code=404, detail="Challenge not found.")
 
-    # Must be the opponent
-    if doc["opponent_id"] != current_user["_id"]:
+    if doc.get("type") != "game_challenge":
+        raise HTTPException(status_code=400, detail="This message is not a game challenge.")
+
+    cd = doc.get("challenge_data", {})
+
+    # Must be the receiver (opponent)
+    if doc["receiver_id"] != current_user["_id"]:
         raise HTTPException(status_code=403, detail="Only the challenged user can decline.")
 
     # Must be pending
-    if doc["status"] != "pending":
-        raise HTTPException(status_code=400, detail=f"Challenge is already {doc['status']}.")
+    if cd.get("status") != "pending":
+        raise HTTPException(status_code=400, detail=f"Challenge is already {cd.get('status')}.")
 
     # Decline
-    await challenges.update_one(
+    await dms.update_one(
         {"_id": doc["_id"]},
-        {"$set": {"status": "declined"}},
+        {"$set": {"challenge_data.status": "declined"}},
     )
-    doc["status"] = "declined"
-    serialized = serialize_challenge(doc)
 
-    # Notify the challenger
-    await sio.emit(
-        "game:challenge_declined",
-        serialized,
-        room=f"user_{doc['challenger_id']}",
-        namespace="/chat",
-    )
+    updated_doc = await dms.find_one({"_id": doc["_id"]})
+    serialized = _serialize_message(updated_doc.copy())
+
+    updated_payload = {
+        "_id": str(updated_doc["_id"]),
+        "sender_id": str(updated_doc["sender_id"]),
+        "receiver_id": str(updated_doc["receiver_id"]),
+        "type": "game_challenge",
+        "challenge_data": serialized.get("challenge_data"),
+    }
+
+    challenger_id = doc["sender_id"]
+    opponent_id = doc["receiver_id"]
+
+    try:
+        await sio.emit("dm_updated", updated_payload, room=str(challenger_id), namespace="/chat")
+        await sio.emit("dm_updated", updated_payload, room=str(opponent_id), namespace="/chat")
+    except Exception as e:
+        print(f"⚠️ Decline Challenge Socket Error: {e}")
 
     return {"challenge": serialized}

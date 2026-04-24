@@ -1,31 +1,72 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Gamepad2, Swords, X, PlayCircle, XCircle, Clock, Zap,
+    Gamepad2, Swords, X, PlayCircle, XCircle, Clock, Zap, Loader,
 } from 'lucide-react';
 
 /**
- * GameInviteCard — Rich embed for game challenges in chat (DMs / Channels).
+ * GameInviteCard — Rich embed for game challenges rendered inline in DM chat.
  *
  * Props:
  *  - challengerName  (string)
  *  - gameName        (string)
  *  - wagerText       (string)  e.g. "50 Aether Shards"
  *  - status          ('pending' | 'accepted' | 'declined' | 'expired')
+ *  - isSender        (boolean) — true if current user sent the challenge
+ *  - opponentName    (string)  — the name of the other player
+ *  - expiresAt       (string)  — ISO timestamp of when the challenge expires
  *  - onAccept        (function)
  *  - onDecline       (function)
+ *  - accepting       (boolean) — loading state for accept button
+ *  - declining       (boolean) — loading state for decline button
  */
 const GameInviteCard = ({
     challengerName = 'Unknown',
     gameName = 'Game',
     wagerText = '',
     status = 'pending',
+    isSender = false,
+    opponentName = '',
+    expiresAt = null,
     onAccept,
     onDecline,
+    accepting = false,
+    declining = false,
 }) => {
-    const isPending  = status === 'pending';
-    const isAccepted = status === 'accepted';
-    const isDeclined = status === 'declined';
-    const isExpired  = status === 'expired';
+    const [timeLeft, setTimeLeft] = useState('');
+    const [isExpiredLocally, setIsExpiredLocally] = useState(false);
+
+    // Live countdown timer for pending challenges
+    useEffect(() => {
+        if (status !== 'pending' || !expiresAt) return;
+
+        const updateTimer = () => {
+            const now = new Date();
+            const expiry = new Date(expiresAt);
+            const diff = expiry - now;
+
+            if (diff <= 0) {
+                setTimeLeft('Expired');
+                setIsExpiredLocally(true);
+                return;
+            }
+
+            const mins = Math.floor(diff / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')}`);
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+        return () => clearInterval(interval);
+    }, [status, expiresAt]);
+
+    // Determine effective status (client-side expiry)
+    const effectiveStatus = (status === 'pending' && isExpiredLocally) ? 'expired' : status;
+
+    const isPending  = effectiveStatus === 'pending';
+    const isAccepted = effectiveStatus === 'accepted';
+    const isDeclined = effectiveStatus === 'declined';
+    const isExpired  = effectiveStatus === 'expired';
     const isDimmed   = isDeclined || isExpired;
 
     // Accent colors per status
@@ -35,7 +76,7 @@ const GameInviteCard = ({
         declined: { color: '#ff4f7b', glow: 'rgba(255,79,123,0.15)' },
         expired:  { color: '#6b7280', glow: 'rgba(107,114,128,0.1)' },
     };
-    const accent = accentMap[status] || accentMap.pending;
+    const accent = accentMap[effectiveStatus] || accentMap.pending;
 
     return (
         <div
@@ -61,10 +102,22 @@ const GameInviteCard = ({
                     <Gamepad2 size={18} color={accent.color} style={{ filter: `drop-shadow(0 0 6px ${accent.glow})` }} />
                 </div>
                 <div style={s.headerText}>
-                    <span style={s.challengerName}>{challengerName}</span>
-                    <span style={s.headerMuted}> challenged you to </span>
-                    <span style={s.gameName}>{gameName}</span>
-                    <span style={s.headerMuted}>!</span>
+                    {isSender ? (
+                        <>
+                            <span style={s.headerMuted}>You challenged </span>
+                            <span style={s.challengerName}>{opponentName || 'them'}</span>
+                            <span style={s.headerMuted}> to </span>
+                            <span style={s.gameName}>{gameName}</span>
+                            <span style={s.headerMuted}>!</span>
+                        </>
+                    ) : (
+                        <>
+                            <span style={s.challengerName}>{challengerName}</span>
+                            <span style={s.headerMuted}> challenged you to </span>
+                            <span style={s.gameName}>{gameName}</span>
+                            <span style={s.headerMuted}>!</span>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -76,18 +129,61 @@ const GameInviteCard = ({
                 </div>
             )}
 
-            {/* Status: Pending — Action Buttons */}
+            {/* Status: Pending — Sender sees "Waiting...", Receiver sees buttons */}
             {isPending && (
-                <div style={s.actions}>
-                    <button style={s.acceptBtn} onClick={onAccept}>
-                        <Swords size={15} style={{ marginRight: 6 }} />
-                        Accept
-                    </button>
-                    <button style={s.declineBtn} onClick={onDecline}>
-                        <X size={15} style={{ marginRight: 4 }} />
-                        Decline
-                    </button>
-                </div>
+                isSender ? (
+                    <div style={s.statusRow}>
+                        <Loader
+                            size={16}
+                            color="#e8ff47"
+                            style={{ flexShrink: 0, animation: 'gicSpin 1.5s linear infinite' }}
+                        />
+                        <span style={{ ...s.statusText, color: 'rgba(240,240,245,0.5)' }}>
+                            Waiting for {opponentName || 'opponent'} to accept...
+                        </span>
+                        {timeLeft && (
+                            <span style={s.timerBadge}>
+                                <Clock size={11} style={{ marginRight: 3, opacity: 0.6 }} />
+                                {timeLeft}
+                            </span>
+                        )}
+                    </div>
+                ) : (
+                    <div>
+                        {timeLeft && (
+                            <div style={s.timerRow}>
+                                <Clock size={12} color="rgba(240,240,245,0.3)" />
+                                <span style={s.timerText}>Expires in {timeLeft}</span>
+                            </div>
+                        )}
+                        <div style={s.actions}>
+                            <button
+                                style={{ ...s.acceptBtn, opacity: accepting ? 0.6 : 1 }}
+                                onClick={onAccept}
+                                disabled={accepting || declining}
+                            >
+                                {accepting ? (
+                                    <Loader size={15} style={{ marginRight: 6, animation: 'gicSpin 1s linear infinite' }} />
+                                ) : (
+                                    <Swords size={15} style={{ marginRight: 6 }} />
+                                )}
+                                {accepting ? 'Accepting...' : 'Accept'}
+                            </button>
+                            <button
+                                style={{ ...s.declineBtn, opacity: declining ? 0.6 : 1 }}
+                                onClick={onDecline}
+                                disabled={accepting || declining}
+                            >
+                                {declining ? (
+                                    <Loader size={15} style={{ marginRight: 4, animation: 'gicSpin 1s linear infinite' }} />
+                                ) : (
+                                    <X size={15} style={{ marginRight: 4 }} />
+                                )}
+                                {declining ? 'Declining...' : 'Decline'}
+                            </button>
+                        </div>
+                    </div>
+                )
             )}
 
             {/* Status: Accepted */}
@@ -99,7 +195,7 @@ const GameInviteCard = ({
                         style={{ filter: 'drop-shadow(0 0 8px rgba(57,217,138,0.6))', flexShrink: 0 }}
                     />
                     <span style={{ ...s.statusText, color: '#39d98a' }}>
-                        Game in Progress — Click to spectate / join
+                        Challenge Accepted — Game On! 🎮
                     </span>
                     <div style={s.pulsingDot} />
                 </div>
@@ -194,6 +290,28 @@ const s = {
         fontWeight: 500,
     },
 
+    // Timer
+    timerRow: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '10px 16px 0',
+    },
+    timerText: {
+        fontSize: 11,
+        color: 'rgba(240,240,245,0.25)',
+        fontFamily: 'monospace',
+    },
+    timerBadge: {
+        display: 'flex',
+        alignItems: 'center',
+        fontSize: 11,
+        fontFamily: 'monospace',
+        color: 'rgba(240,240,245,0.3)',
+        marginLeft: 'auto',
+        flexShrink: 0,
+    },
+
     // Actions
     actions: {
         display: 'flex',
@@ -256,7 +374,7 @@ const s = {
     },
 };
 
-// Inject keyframe
+// Inject keyframes
 if (typeof document !== 'undefined' && !document.querySelector('[data-gic-styles]')) {
     const tag = document.createElement('style');
     tag.setAttribute('data-gic-styles', '');
@@ -264,6 +382,10 @@ if (typeof document !== 'undefined' && !document.querySelector('[data-gic-styles
         @keyframes gicPulse {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.4; transform: scale(0.7); }
+        }
+        @keyframes gicSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
     `;
     document.head.appendChild(tag);
