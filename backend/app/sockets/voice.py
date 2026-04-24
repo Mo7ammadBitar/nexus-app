@@ -1,9 +1,14 @@
 """
 Voice Chat Namespace
 Handles WebRTC signaling and voice channel state.
+
+SECURITY: All connections are authenticated via JWT token verification
+during the Socket.IO handshake. No user_id trust from client.
 """
 import socketio
 from typing import Dict, List, Optional
+from app.utils.security import decode_access_token
+
 
 class VoiceNamespace(socketio.AsyncNamespace):
     def __init__(self, namespace=None):
@@ -12,30 +17,59 @@ class VoiceNamespace(socketio.AsyncNamespace):
         self.users: Dict[str, dict] = {}
         # Rooms: {room_id: [sid, ...]}
         self.rooms: Dict[str, List[str]] = {}
+        # Verified identities from JWT: {sid: {user_id, username}}
+        self.verified_identities: Dict[str, dict] = {}
 
     async def on_connect(self, sid, environ, auth=None):
-        """Handle new connection"""
-        print(f"🎤 Voice connected: {sid}")
-        # Auth usually handled by middleware, but we can store basic info if needed
-        # We'll wait for join_voice to map user_id
-        pass
+        """
+        Handle new voice connection — JWT-authenticated handshake.
+        Rejects connection if token is missing, expired, or invalid.
+        """
+        if not auth or not auth.get("token"):
+            raise ConnectionRefusedError("JWT token required in auth.token")
+        
+        payload = decode_access_token(auth["token"])
+        if payload is None:
+            raise ConnectionRefusedError("Invalid or expired JWT token")
+        
+        user_id = payload.get("sub")
+        if not user_id:
+            raise ConnectionRefusedError("Malformed token: missing subject")
+        
+        username = payload.get("username", "Unknown")
+        
+        # Store verified identity for use in join_voice / join_dm_call
+        self.verified_identities[sid] = {
+            "user_id": user_id,
+            "username": username
+        }
+        
+        print(f"🎤 Voice connected: {sid} (user: {username}) [JWT verified]")
 
     async def on_disconnect(self, sid):
         """Handle disconnection"""
         print(f"🎤 Voice disconnected: {sid}")
         await self._handle_leave(sid)
+        # Clean up verified identity
+        self.verified_identities.pop(sid, None)
 
     async def on_join_voice(self, sid, data):
         """
         User joins a voice room.
-        data: { room_id: str, user_id: str, username: str }
+        Identity is derived from the JWT verified during connect.
+        data: { room_id: str }
         """
+        # Use verified identity from JWT — never trust client-supplied user_id
+        identity = self.verified_identities.get(sid)
+        if not identity:
+            return {"error": "Not authenticated"}
+        
         room_id = data.get("room_id")
-        user_id = data.get("user_id")
-        username = data.get("username", "Unknown")
+        user_id = identity["user_id"]
+        username = identity["username"]
 
-        if not room_id or not user_id:
-            return {"error": "Missing room_id or user_id"}
+        if not room_id:
+            return {"error": "Missing room_id"}
 
         # --- FIX: ZOMBIE CLEANUP ---
         # Check if this user_id is already in the room with a different SID
@@ -175,14 +209,20 @@ class VoiceNamespace(socketio.AsyncNamespace):
     async def on_join_dm_call(self, sid, data):
         """
         User joins an isolated DM voice call room.
-        data: { user_id: str, target_user_id: str, username: str }
+        Identity is derived from the JWT verified during connect.
+        data: { target_user_id: str }
         """
-        user_id = data.get("user_id")
+        # Use verified identity from JWT — never trust client-supplied user_id
+        identity = self.verified_identities.get(sid)
+        if not identity:
+            return {"error": "Not authenticated"}
+        
+        user_id = identity["user_id"]
+        username = identity["username"]
         target_user_id = data.get("target_user_id")
-        username = data.get("username", "Unknown")
 
-        if not user_id or not target_user_id:
-            return {"error": "Missing user_id or target_user_id"}
+        if not target_user_id:
+            return {"error": "Missing target_user_id"}
 
         # Deterministically create isolated room ID for these exact 2 users
         room_id = self._get_dm_room_id(user_id, target_user_id)

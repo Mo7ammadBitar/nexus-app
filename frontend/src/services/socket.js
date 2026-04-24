@@ -13,16 +13,18 @@ let currentMessageHandler = null;
 let currentTypingHandler = null;
 let currentStopTypingHandler = null;
 
-// Get user auth data
+// Get user auth data — token is the primary auth mechanism
 const getAuthData = () => {
     const token = localStorage.getItem('token');
+    if (!token) return null;  // Cannot connect without JWT
+    
     const user = localStorage.getItem('user');
     if (user) {
         const userData = JSON.parse(user);
         return {
+            token,  // JWT — verified server-side during handshake
             user_id: userData._id,
             username: userData.username,
-            token
         };
     }
     return null;

@@ -1,7 +1,11 @@
 """
 Configuration settings using Pydantic Settings
+
+All secrets and credentials MUST be provided via environment variables.
+The application will refuse to start if critical secrets are missing.
 """
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from functools import lru_cache
 
 
@@ -12,15 +16,15 @@ class Settings(BaseSettings):
     mongodb_url: str = "mongodb://localhost:27017"
     database_name: str = "nexus"
     
-    # JWT
-    secret_key: str = "nexus_super_secret_key_change_in_production_2024"
+    # JWT — NO DEFAULT: must be set in production
+    secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 hours
     
-    # Super Admin
-    super_admin_email: str = "mohammadbisherbitar@gmail.com"
-    super_admin_password: str = "mohammad2004"
-    super_admin_username: str = "Shadow"
+    # Super Admin — NO DEFAULTS: must be set via env vars
+    super_admin_email: str
+    super_admin_password: str
+    super_admin_username: str
     
     # File Upload
     upload_dir: str = "../uploads"
@@ -47,6 +51,23 @@ class Settings(BaseSettings):
     paypal_client_id: str = ""
     paypal_client_secret: str = ""
     paypal_sandbox: bool = True  # Set to False for live payments
+    
+    @field_validator("secret_key")
+    @classmethod
+    def secret_key_must_be_strong(cls, v: str) -> str:
+        if not v or len(v) < 32:
+            raise ValueError(
+                "SECRET_KEY must be at least 32 characters. "
+                "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+            )
+        return v
+    
+    @field_validator("super_admin_password")
+    @classmethod
+    def admin_password_must_be_strong(cls, v: str) -> str:
+        if not v or len(v) < 12:
+            raise ValueError("SUPER_ADMIN_PASSWORD must be at least 12 characters.")
+        return v
     
     class Config:
         env_file = ".env"

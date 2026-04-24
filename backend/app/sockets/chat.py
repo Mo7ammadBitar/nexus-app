@@ -1,6 +1,9 @@
 """
 Socket.IO Chat Handler
 Real-time text messaging for channels
+
+SECURITY: All connections are authenticated via JWT token verification
+during the Socket.IO handshake. No user_id trust from client.
 """
 import socketio
 from datetime import datetime
@@ -9,9 +12,36 @@ from bson import ObjectId
 from app.services.message_service import MessageService
 from app.services.server_service import MemberService, ChannelService
 from app.database import get_users_collection
+from app.utils.security import decode_access_token
 
 # Global online users tracker: {user_id: set(sids)}
 online_users = {}
+
+
+def _verify_socket_token(auth: dict) -> dict:
+    """
+    Verify JWT token from Socket.IO auth payload.
+    Returns decoded JWT payload if valid.
+    Raises ConnectionRefusedError if invalid.
+    """
+    if not auth:
+        raise ConnectionRefusedError("Authentication required")
+    
+    token = auth.get("token")
+    if not token:
+        raise ConnectionRefusedError("JWT token required in auth.token")
+    
+    payload = decode_access_token(token)
+    if payload is None:
+        raise ConnectionRefusedError("Invalid or expired JWT token")
+    
+    user_id = payload.get("sub")
+    if not user_id:
+        raise ConnectionRefusedError("Malformed token: missing subject")
+    
+    username = payload.get("username", "Anonymous")
+    
+    return {"user_id": user_id, "username": username}
 
 
 class ChatNamespace(socketio.AsyncNamespace):
@@ -46,12 +76,17 @@ class ChatNamespace(socketio.AsyncNamespace):
         return data
 
     async def on_connect(self, sid, environ, auth=None):
-        """Handle user connection"""
-        if not auth or "user_id" not in auth:
-            return False
+        """
+        Handle user connection — JWT-authenticated handshake.
+        Rejects connection if token is missing, expired, or invalid.
+        """
+        try:
+            verified = _verify_socket_token(auth)
+        except ConnectionRefusedError:
+            raise  # Let socketio handle the rejection
         
-        user_id = auth["user_id"]
-        username = auth.get("username", "Anonymous")
+        user_id = verified["user_id"]
+        username = verified["username"]
         
         self.connected_users[sid] = {
             "user_id": user_id,
@@ -75,16 +110,23 @@ class ChatNamespace(socketio.AsyncNamespace):
         online_users[user_id].add(sid)
         
         # Join user-specific room for DMs and notifications
-        # FIX 1: Added await
         await self.enter_room(sid, f"user_{user_id}") 
         
-        print(f"🔌 Chat: {username} connected (sid: {sid})")
+        print(f"🔌 Chat: {username} connected (sid: {sid}) [JWT verified]")
         return True
 
     async def on_join_user_room(self, sid, user_id):
         """Explicitly join user-specific room for DMs"""
+        if sid not in self.connected_users:
+            return {"error": "Not authenticated"}
+        
+        # Only allow joining your own room (prevent IDOR)
+        authenticated_user_id = self.connected_users[sid]["user_id"]
+        if str(user_id) != authenticated_user_id:
+            print(f"⚠️ IDOR attempt blocked: {authenticated_user_id} tried to join room of {user_id}")
+            return {"error": "Unauthorized"}
+        
         print(f"✅ Socket: User {user_id} joined room {user_id}")
-        # FIX 1: Added await
         await self.enter_room(sid, str(user_id))
         return {"success": True}
     
@@ -97,7 +139,6 @@ class ChatNamespace(socketio.AsyncNamespace):
             
             # Leave all channels
             for channel_id in user["channels"]:
-                # FIX 1: Added await
                 await self.leave_room(sid, f"channel_{channel_id}")
             
             # Remove from global tracker
@@ -145,7 +186,6 @@ class ChatNamespace(socketio.AsyncNamespace):
         
         # Join room
         room = f"channel_{channel_id}"
-        # FIX 1: Added await
         await self.enter_room(sid, room)
         user["channels"].append(channel_id)
         
@@ -154,7 +194,7 @@ class ChatNamespace(socketio.AsyncNamespace):
         
         print(f"📢 {user['username']} joined channel {channel_id}")
         
-        # FIX 2: Serialize messages (convert datetime/_id to string) before returning
+        # Serialize messages (convert datetime/_id to string) before returning
         serialized_messages = self.serialize_data(messages)
         
         return {
@@ -175,7 +215,6 @@ class ChatNamespace(socketio.AsyncNamespace):
         user = self.connected_users[sid]
         room = f"channel_{channel_id}"
         
-        # FIX 1: Added await
         await self.leave_room(sid, room)
         if channel_id in user["channels"]:
             user["channels"].remove(channel_id)
@@ -230,7 +269,7 @@ class ChatNamespace(socketio.AsyncNamespace):
             message["display_name"] = user_doc.get("display_name")
             message["avatar_url"] = user_doc.get("avatar_url")
         
-        # FIX 2: Serialize message before emitting
+        # Serialize message before emitting
         serialized_message = self.serialize_data(message)
         
         # Broadcast to channel
@@ -260,7 +299,6 @@ class ChatNamespace(socketio.AsyncNamespace):
             return
         
         user = self.connected_users[sid]
-        # print(f"⌨️  {user['username']} started typing in {channel_id}")
         
         # Initialize channel typing dict if needed
         if channel_id not in self.typing_users:
@@ -286,7 +324,6 @@ class ChatNamespace(socketio.AsyncNamespace):
             return
         
         user = self.connected_users[sid]
-        # print(f"⌨️  {user['username']} stopped typing in {channel_id}")
         
         # Remove from typing users
         if channel_id in self.typing_users:
