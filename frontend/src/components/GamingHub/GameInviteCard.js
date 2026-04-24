@@ -51,7 +51,7 @@ const GameInviteCard = ({
         return () => clearInterval(interval);
     }, [status, expiresAt]);
 
-    const effectiveStatus = (status === 'pending' && isExpiredLocally) ? 'expired' : status;
+    const effectiveStatus = (status === 'pending' && isExpiredLocally && expiresAt) ? 'expired' : status;
 
     const isPending  = effectiveStatus === 'pending';
     const isAccepted = effectiveStatus === 'accepted';
