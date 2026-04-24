@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Swords, Hexagon, FileText, Scissors, Circle, Grid3x3, Send, Zap } from 'lucide-react';
+import { X, Swords, Hexagon, FileText, Scissors, Circle, Zap, Send } from 'lucide-react';
 import { gamesAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -47,14 +47,19 @@ const ChallengeModal = ({ isOpen, onClose, friendId, friendName }) => {
         setSending(true);
         try {
             await gamesAPI.sendChallenge(friendId, selectedGame, wagerText);
-            // Challenge appears in DM chat automatically via dm_new_message socket event
             toast.success(`Challenge sent to ${friendName}!`);
-            onClose();
             setSelectedGame(null);
             setWagerText('');
+            onClose();
         } catch (err) {
-            const msg = err.response?.data?.detail || 'Failed to send challenge.';
-            toast.error(msg);
+            if (err.response?.status === 429) {
+                toast.error(err.response.data.detail);
+            } else if (err.response?.status === 409) {
+                toast.error("You already have a pending challenge with this user.");
+            } else {
+                const msg = err.response?.data?.detail || 'Failed to send challenge.';
+                toast.error(msg);
+            }
         } finally {
             setSending(false);
         }
@@ -120,8 +125,8 @@ const ChallengeModal = ({ isOpen, onClose, friendId, friendName }) => {
                 <button
                     style={{
                         ...s.sendBtn,
-                        opacity: selectedGame ? 1 : 0.4,
-                        cursor: selectedGame ? 'pointer' : 'not-allowed',
+                        opacity: selectedGame && !sending ? 1 : 0.4,
+                        cursor: selectedGame && !sending ? 'pointer' : 'not-allowed',
                     }}
                     onClick={handleSend}
                     disabled={!selectedGame || sending}
@@ -252,7 +257,6 @@ const s = {
         color: '#39d98a',
         fontSize: 14,
         fontWeight: 700,
-        cursor: 'pointer',
         transition: 'all 0.2s ease',
         letterSpacing: '0.02em',
     },

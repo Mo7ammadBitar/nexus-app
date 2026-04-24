@@ -1,24 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Gamepad2, Swords, X, PlayCircle, XCircle, Clock, Zap, Loader,
+    Gamepad2, Swords, X, PlayCircle, XCircle, Clock, Zap, Loader, Trophy
 } from 'lucide-react';
 
-/**
- * GameInviteCard — Rich embed for game challenges rendered inline in DM chat.
- *
- * Props:
- *  - challengerName  (string)
- *  - gameName        (string)
- *  - wagerText       (string)  e.g. "50 Aether Shards"
- *  - status          ('pending' | 'accepted' | 'declined' | 'expired')
- *  - isSender        (boolean) — true if current user sent the challenge
- *  - opponentName    (string)  — the name of the other player
- *  - expiresAt       (string)  — ISO timestamp of when the challenge expires
- *  - onAccept        (function)
- *  - onDecline       (function)
- *  - accepting       (boolean) — loading state for accept button
- *  - declining       (boolean) — loading state for decline button
- */
 const GameInviteCard = ({
     challengerName = 'Unknown',
     gameName = 'Game',
@@ -29,13 +13,16 @@ const GameInviteCard = ({
     expiresAt = null,
     onAccept,
     onDecline,
+    onCancel,
     accepting = false,
     declining = false,
+    cancelling = false,
+    gameResult = null,
 }) => {
     const [timeLeft, setTimeLeft] = useState('');
     const [isExpiredLocally, setIsExpiredLocally] = useState(false);
 
-    // Live countdown timer for pending challenges
+    // Live countdown timer
     useEffect(() => {
         if (status !== 'pending' || !expiresAt) return;
 
@@ -60,23 +47,34 @@ const GameInviteCard = ({
         return () => clearInterval(interval);
     }, [status, expiresAt]);
 
-    // Determine effective status (client-side expiry)
     const effectiveStatus = (status === 'pending' && isExpiredLocally) ? 'expired' : status;
 
     const isPending  = effectiveStatus === 'pending';
     const isAccepted = effectiveStatus === 'accepted';
     const isDeclined = effectiveStatus === 'declined';
     const isExpired  = effectiveStatus === 'expired';
-    const isDimmed   = isDeclined || isExpired;
+    const isCancelled = effectiveStatus === 'cancelled';
+    const isCompleted = effectiveStatus === 'completed';
+    const isDimmed   = isDeclined || isExpired || isCancelled;
 
-    // Accent colors per status
     const accentMap = {
-        pending:  { color: '#e8ff47', glow: 'rgba(232,255,71,0.25)' },
-        accepted: { color: '#39d98a', glow: 'rgba(57,217,138,0.3)' },
-        declined: { color: '#ff4f7b', glow: 'rgba(255,79,123,0.15)' },
-        expired:  { color: '#6b7280', glow: 'rgba(107,114,128,0.1)' },
+        pending:   { color: '#e8ff47', glow: 'rgba(232,255,71,0.25)' },
+        accepted:  { color: '#39d98a', glow: 'rgba(57,217,138,0.3)' },
+        declined:  { color: '#ff4f7b', glow: 'rgba(255,79,123,0.15)' },
+        expired:   { color: '#6b7280', glow: 'rgba(107,114,128,0.1)' },
+        cancelled: { color: '#6b7280', glow: 'rgba(107,114,128,0.1)' },
+        completed: { color: '#e8ff47', glow: 'rgba(232,255,71,0.25)' },
     };
     const accent = accentMap[effectiveStatus] || accentMap.pending;
+
+    const formatResultText = () => {
+        if (!gameResult) return 'Match Completed!';
+        const res = gameResult.reporter_result;
+        if (res === 'draw') return 'Game Drawn';
+        if (res === 'win') return 'Result: Win';
+        if (res === 'loss' || res === 'lose') return 'Result: Loss';
+        return `Result: ${res}`;
+    };
 
     return (
         <div
@@ -87,7 +85,6 @@ const GameInviteCard = ({
                 opacity: isDimmed ? 0.55 : 1,
             }}
         >
-            {/* Top accent line */}
             <div
                 style={{
                     ...s.accentLine,
@@ -96,7 +93,6 @@ const GameInviteCard = ({
                 }}
             />
 
-            {/* Header */}
             <div style={s.header}>
                 <div style={{ ...s.headerIconWrap, borderColor: accent.color + '44' }}>
                     <Gamepad2 size={18} color={accent.color} style={{ filter: `drop-shadow(0 0 6px ${accent.glow})` }} />
@@ -121,7 +117,6 @@ const GameInviteCard = ({
                 </div>
             </div>
 
-            {/* Wager / body */}
             {wagerText && (
                 <div style={s.wagerRow}>
                     <Zap size={13} color="#e8ff47" style={{ flexShrink: 0, opacity: 0.7 }} />
@@ -129,7 +124,6 @@ const GameInviteCard = ({
                 </div>
             )}
 
-            {/* Status: Pending — Sender sees "Waiting...", Receiver sees buttons */}
             {isPending && (
                 isSender ? (
                     <div style={s.statusRow}>
@@ -139,7 +133,7 @@ const GameInviteCard = ({
                             style={{ flexShrink: 0, animation: 'gicSpin 1.5s linear infinite' }}
                         />
                         <span style={{ ...s.statusText, color: 'rgba(240,240,245,0.5)' }}>
-                            Waiting for {opponentName || 'opponent'} to accept...
+                            Waiting for {opponentName || 'opponent'}...
                         </span>
                         {timeLeft && (
                             <span style={s.timerBadge}>
@@ -147,6 +141,13 @@ const GameInviteCard = ({
                                 {timeLeft}
                             </span>
                         )}
+                        <button 
+                            style={{...s.declineBtn, padding: '4px 8px', fontSize: 11, marginLeft: 8, opacity: cancelling ? 0.6 : 1 }}
+                            onClick={onCancel}
+                            disabled={cancelling}
+                        >
+                            {cancelling ? '...' : 'Cancel'}
+                        </button>
                     </div>
                 ) : (
                     <div>
@@ -186,7 +187,6 @@ const GameInviteCard = ({
                 )
             )}
 
-            {/* Status: Accepted */}
             {isAccepted && (
                 <div style={s.statusRow}>
                     <PlayCircle
@@ -201,7 +201,6 @@ const GameInviteCard = ({
                 </div>
             )}
 
-            {/* Status: Declined */}
             {isDeclined && (
                 <div style={s.statusRow}>
                     <XCircle size={18} color="#ff4f7b" style={{ flexShrink: 0 }} />
@@ -209,18 +208,32 @@ const GameInviteCard = ({
                 </div>
             )}
 
-            {/* Status: Expired */}
             {isExpired && (
                 <div style={s.statusRow}>
                     <Clock size={18} color="#6b7280" style={{ flexShrink: 0 }} />
                     <span style={{ ...s.statusText, color: '#6b7280' }}>Challenge Expired</span>
                 </div>
             )}
+
+            {isCancelled && (
+                <div style={s.statusRow}>
+                    <XCircle size={18} color="#6b7280" style={{ flexShrink: 0 }} />
+                    <span style={{ ...s.statusText, color: '#6b7280' }}>Challenge Cancelled</span>
+                </div>
+            )}
+
+            {isCompleted && (
+                <div style={s.statusRow}>
+                    <Trophy size={18} color="#e8ff47" style={{ flexShrink: 0 }} />
+                    <span style={{ ...s.statusText, color: '#e8ff47' }}>
+                        {formatResultText()}
+                    </span>
+                </div>
+            )}
         </div>
     );
 };
 
-// ── STYLES ──
 const s = {
     card: {
         position: 'relative',
@@ -236,157 +249,32 @@ const s = {
         transition: 'all 0.3s ease',
         fontFamily: "'Inter', sans-serif",
     },
-    accentLine: {
-        height: 2,
-        width: '100%',
-    },
-
-    // Header
-    header: {
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 10,
-        padding: '14px 16px 0',
-    },
-    headerIconWrap: {
-        width: 34,
-        height: 34,
-        borderRadius: 10,
-        border: '1px solid',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(255,255,255,0.03)',
-        flexShrink: 0,
-    },
-    headerText: {
-        fontSize: 13,
-        lineHeight: 1.5,
-        color: 'rgba(240,240,245,0.55)',
-        paddingTop: 2,
-    },
-    challengerName: {
-        fontWeight: 700,
-        color: '#f0f0f5',
-    },
-    headerMuted: {
-        color: 'rgba(240,240,245,0.4)',
-    },
-    gameName: {
-        fontWeight: 700,
-        color: '#e8ff47',
-    },
-
-    // Wager
-    wagerRow: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '8px 16px 0',
-    },
-    wagerText: {
-        fontSize: 12,
-        color: 'rgba(240,240,245,0.35)',
-        fontWeight: 500,
-    },
-
-    // Timer
-    timerRow: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 5,
-        padding: '10px 16px 0',
-    },
-    timerText: {
-        fontSize: 11,
-        color: 'rgba(240,240,245,0.25)',
-        fontFamily: 'monospace',
-    },
-    timerBadge: {
-        display: 'flex',
-        alignItems: 'center',
-        fontSize: 11,
-        fontFamily: 'monospace',
-        color: 'rgba(240,240,245,0.3)',
-        marginLeft: 'auto',
-        flexShrink: 0,
-    },
-
-    // Actions
-    actions: {
-        display: 'flex',
-        gap: 8,
-        padding: '14px 16px',
-    },
-    acceptBtn: {
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '9px 16px',
-        borderRadius: 10,
-        border: '1px solid rgba(57,217,138,0.3)',
-        background: 'rgba(57,217,138,0.12)',
-        color: '#39d98a',
-        fontSize: 13,
-        fontWeight: 700,
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        letterSpacing: '0.02em',
-        boxShadow: '0 0 16px rgba(57,217,138,0.15)',
-    },
-    declineBtn: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '9px 16px',
-        borderRadius: 10,
-        border: '1px solid rgba(255,255,255,0.08)',
-        background: 'rgba(255,255,255,0.04)',
-        color: 'rgba(240,240,245,0.4)',
-        fontSize: 13,
-        fontWeight: 600,
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-    },
-
-    // Status row
-    statusRow: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '12px 16px',
-    },
-    statusText: {
-        fontSize: 12,
-        fontWeight: 600,
-        letterSpacing: '0.02em',
-        flex: 1,
-    },
-    pulsingDot: {
-        width: 8,
-        height: 8,
-        borderRadius: '50%',
-        background: '#39d98a',
-        boxShadow: '0 0 8px rgba(57,217,138,0.6)',
-        animation: 'gicPulse 1.5s ease-in-out infinite',
-        flexShrink: 0,
-    },
+    accentLine: { height: 2, width: '100%' },
+    header: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '14px 16px 0' },
+    headerIconWrap: { width: 34, height: 34, borderRadius: 10, border: '1px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.03)', flexShrink: 0 },
+    headerText: { fontSize: 13, lineHeight: 1.5, color: 'rgba(240,240,245,0.55)', paddingTop: 2 },
+    challengerName: { fontWeight: 700, color: '#f0f0f5' },
+    headerMuted: { color: 'rgba(240,240,245,0.4)' },
+    gameName: { fontWeight: 700, color: '#e8ff47' },
+    wagerRow: { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px 0' },
+    wagerText: { fontSize: 12, color: 'rgba(240,240,245,0.35)', fontWeight: 500 },
+    timerRow: { display: 'flex', alignItems: 'center', gap: 5, padding: '10px 16px 0' },
+    timerText: { fontSize: 11, color: 'rgba(240,240,245,0.25)', fontFamily: 'monospace' },
+    timerBadge: { display: 'flex', alignItems: 'center', fontSize: 11, fontFamily: 'monospace', color: 'rgba(240,240,245,0.3)', marginLeft: 'auto', flexShrink: 0 },
+    actions: { display: 'flex', gap: 8, padding: '14px 16px' },
+    acceptBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(57,217,138,0.3)', background: 'rgba(57,217,138,0.12)', color: '#39d98a', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease', letterSpacing: '0.02em', boxShadow: '0 0 16px rgba(57,217,138,0.15)' },
+    declineBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'rgba(240,240,245,0.4)', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' },
+    statusRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px' },
+    statusText: { fontSize: 12, fontWeight: 600, letterSpacing: '0.02em', flex: 1 },
+    pulsingDot: { width: 8, height: 8, borderRadius: '50%', background: '#39d98a', boxShadow: '0 0 8px rgba(57,217,138,0.6)', animation: 'gicPulse 1.5s ease-in-out infinite', flexShrink: 0 },
 };
 
-// Inject keyframes
 if (typeof document !== 'undefined' && !document.querySelector('[data-gic-styles]')) {
     const tag = document.createElement('style');
     tag.setAttribute('data-gic-styles', '');
     tag.textContent = `
-        @keyframes gicPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.7); }
-        }
-        @keyframes gicSpin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
+        @keyframes gicPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.7); } }
+        @keyframes gicSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     `;
     document.head.appendChild(tag);
 }

@@ -80,7 +80,7 @@ const delay = (ms) => new Promise(r => setTimeout(r, ms));
 // ═══════════════════════════════════════════════════
 // MULTIPLAYER RPS VIEW — Real-time 2-player via Socket.IO
 // ═══════════════════════════════════════════════════
-const MultiplayerRPSView = ({ session, onBack }) => {
+const MultiplayerRPSView = ({ session, onBack, onGameEnd }) => {
     const soundsRef = useRef(null);
     if (!soundsRef.current) soundsRef.current = createSoundEngine();
     const sounds = soundsRef.current;
@@ -135,6 +135,10 @@ const MultiplayerRPSView = ({ session, onBack }) => {
         ].slice(0, 5));
 
         setRound(r => r + 1);
+
+        if (onGameEnd) {
+            onGameEnd(result);
+        }
 
         // Unlock after brief delay
         setTimeout(() => {
@@ -342,10 +346,10 @@ const MultiplayerRPSView = ({ session, onBack }) => {
 };
 
 
-const RockPaperScissors = ({ onBack, multiplayerSession }) => {
+const RockPaperScissors = ({ onBack, multiplayerSession, onGameEnd }) => {
     // If launched with a multiplayer session (from game:start), go straight to multiplayer
     if (multiplayerSession) {
-        return <MultiplayerRPSView session={multiplayerSession} onBack={onBack} />;
+        return <MultiplayerRPSView session={multiplayerSession} onBack={onBack} onGameEnd={onGameEnd} />;
     }
 
     const soundsRef = useRef(null);

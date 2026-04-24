@@ -532,7 +532,7 @@ const CPUGameView = ({ onBack, onBackToLobby }) => {
 // ═══════════════════════════════════════════════════
 // MULTIPLAYER GAME VIEW — Real-time 2-player via Socket.IO
 // ═══════════════════════════════════════════════════
-const MultiplayerGameView = ({ session, onBack }) => {
+const MultiplayerGameView = ({ session, onBack, onGameEnd }) => {
     const soundsRef = useRef(null);
     if (!soundsRef.current) soundsRef.current = createSoundEngine();
     const sounds = soundsRef.current;
@@ -611,20 +611,23 @@ const MultiplayerGameView = ({ session, onBack }) => {
             setResultType('draw');
             setScore(prev => ({ ...prev, draws: prev.draws + 1 }));
             sounds.draw();
+            if (onGameEnd) onGameEnd('draw');
         } else if (result.winner === myMark) {
             setResultText('▲ YOU WIN');
             setResultType('win');
             setWinLine(result.line);
             setScore(prev => ({ ...prev, me: prev.me + 1 }));
             sounds.win();
+            if (onGameEnd) onGameEnd('win');
         } else {
             setResultText(`▼ ${session.theirName} WINS`);
             setResultType('lose');
             setWinLine(result.line);
             setScore(prev => ({ ...prev, them: prev.them + 1 }));
             sounds.lose();
+            if (onGameEnd) onGameEnd('loss');
         }
-    }, [myMark, session.theirName]); // eslint-disable-line
+    }, [myMark, session.theirName, onGameEnd]); // eslint-disable-line
 
     const handleCellClick = (index) => {
         if (!isMyTurn || board[index] || gameOver) return;
@@ -762,12 +765,12 @@ const MultiplayerGameView = ({ session, onBack }) => {
 // ═══════════════════════════════════════════════════
 // MAIN TicTacToe — mode router
 // ═══════════════════════════════════════════════════
-const TicTacToe = ({ onBack, multiplayerSession }) => {
+const TicTacToe = ({ onBack, multiplayerSession, onGameEnd }) => {
     const [mode, setMode] = useState('lobby'); // 'lobby' | 'cpu' | 'friends'
 
     // If launched with a multiplayer session (from game:start), go straight to multiplayer
     if (multiplayerSession) {
-        return <MultiplayerGameView session={multiplayerSession} onBack={onBack} />;
+        return <MultiplayerGameView session={multiplayerSession} onBack={onBack} onGameEnd={onGameEnd} />;
     }
 
     if (mode === 'cpu') {

@@ -1,14 +1,6 @@
 import React, { useState } from 'react';
 import GameInviteCard from './GameInviteCard';
 
-/**
- * Demo harness — renders all 4 GameInviteCard states side by side.
- * Drop this into any view to visually test, then remove.
- *
- * Usage in any component:
- *   import GameInviteCardDemo from '../GamingHub/GameInviteCardDemo';
- *   <GameInviteCardDemo />
- */
 const GameInviteCardDemo = () => {
     const [liveStatus, setLiveStatus] = useState('pending');
 
@@ -57,6 +49,15 @@ const GameInviteCardDemo = () => {
                 onDecline={() => {}}
             />
             <GameInviteCard
+                challengerName="NeonBlade"
+                opponentName="CyberPhantom"
+                gameName="Rock Paper Scissors"
+                isSender={true}
+                wagerText="100 Aether Shards"
+                status="pending"
+                onCancel={() => {}}
+            />
+            <GameInviteCard
                 challengerName="CyberPhantom"
                 gameName="Tic-Tac-Toe"
                 wagerText="25 Aether Shards"
@@ -73,6 +74,19 @@ const GameInviteCardDemo = () => {
                 gameName="Tic-Tac-Toe"
                 wagerText="10 Aether Shards"
                 status="expired"
+            />
+            <GameInviteCard
+                challengerName="Jinx"
+                gameName="Rock Paper Scissors"
+                wagerText="5 Aether Shards"
+                status="cancelled"
+            />
+            <GameInviteCard
+                challengerName="Grandmaster"
+                gameName="Tic-Tac-Toe"
+                wagerText="500 Aether Shards"
+                status="completed"
+                gameResult={{ reporter_result: 'win', opponent_result: 'loss' }}
             />
         </div>
     );

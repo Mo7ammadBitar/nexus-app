@@ -1,25 +1,124 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Gamepad2, ArrowLeft, Swords, Trophy, Hexagon, FileText, Scissors, X, Circle, Grid3x3 } from 'lucide-react';
 import RockPaperScissors from './RockPaperScissors';
 import TicTacToe from './TicTacToe';
 import { useUIStore } from '../../store/uiStore';
+import { useSocket } from '../../hooks/useSocket';
+import { gamesAPI } from '../../services/api';
+import { toast } from 'react-hot-toast';
 
 const GamingHub = () => {
     const [activeGame, setActiveGame] = useState(null);
     const activeMultiplayerGame = useUIStore(s => s.activeMultiplayerGame);
     const clearActiveMultiplayerGame = useUIStore(s => s.clearActiveMultiplayerGame);
+    const [lastGameResult, setLastGameResult] = useState(null);
+    const { socket } = useSocket('/chat');
+
+    useEffect(() => {
+        if (!socket) return;
+        const handleGameResult = (data) => {
+            setLastGameResult({
+                result: data.result,
+                opponent_result: data.opponent_result,
+                game_type: data.game_type || 'Game'
+            });
+        };
+        socket.on('game:result', handleGameResult);
+        return () => socket.off('game:result', handleGameResult);
+    }, [socket]);
+
+    const handleGameEnd = async (result) => {
+        if (!activeMultiplayerGame?.challengeId) return;
+        try {
+            await gamesAPI.recordResult(activeMultiplayerGame.challengeId, result);
+        } catch (err) {
+            console.error("Failed to record result:", err);
+            toast.error("Failed to save game result.");
+        }
+    };
+
+    const handleExitMultiplayer = () => {
+        clearActiveMultiplayerGame();
+    };
+
+    const renderResultBanner = () => {
+        if (!lastGameResult) return null;
+        const isWin = lastGameResult.result === 'win';
+        const isLoss = lastGameResult.result === 'lose' || lastGameResult.result === 'loss'; // handle 'loss'
+        
+        let bgColor = 'rgba(255, 202, 64, 0.15)'; // Draw
+        let borderColor = '#ffca40';
+        let textColor = '#ffca40';
+        let text = 'MATCH DRAWN!';
+
+        if (isWin) {
+            bgColor = 'rgba(57, 217, 138, 0.15)';
+            borderColor = '#39d98a';
+            textColor = '#39d98a';
+            text = 'VICTORY!';
+        } else if (isLoss) {
+            bgColor = 'rgba(255, 79, 123, 0.15)';
+            borderColor = '#ff4f7b';
+            textColor = '#ff4f7b';
+            text = 'DEFEAT!';
+        }
+
+        return (
+            <div style={{
+                position: 'fixed',
+                bottom: 30,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: '#16161a',
+                border: `2px solid ${borderColor}`,
+                boxShadow: `0 8px 32px ${bgColor}`,
+                borderRadius: 16,
+                padding: '16px 24px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                zIndex: 9999,
+                animation: 'slideUpBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            }}>
+                <Trophy size={24} color={textColor} />
+                <span style={{ color: textColor, fontWeight: 800, fontSize: 18, letterSpacing: '0.05em' }}>
+                    {text}
+                </span>
+                <button
+                    onClick={() => setLastGameResult(null)}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'rgba(240,240,245,0.4)',
+                        cursor: 'pointer',
+                        padding: 4,
+                        display: 'flex',
+                        marginLeft: 12
+                    }}
+                >
+                    <X size={20} />
+                </button>
+            </div>
+        );
+    };
 
     // Priority: if a multiplayer game session is active, render that game
     if (activeMultiplayerGame) {
-        const handleExitMultiplayer = () => {
-            clearActiveMultiplayerGame();
-        };
-
         if (activeMultiplayerGame.gameType === 'tic-tac-toe') {
-            return <TicTacToe onBack={handleExitMultiplayer} multiplayerSession={activeMultiplayerGame} />;
+            return (
+                <>
+                    {renderResultBanner()}
+                    <TicTacToe onBack={handleExitMultiplayer} multiplayerSession={activeMultiplayerGame} onGameEnd={handleGameEnd} />
+                </>
+            );
         }
         if (activeMultiplayerGame.gameType === 'rps') {
-            return <RockPaperScissors onBack={handleExitMultiplayer} multiplayerSession={activeMultiplayerGame} />;
+            return (
+                <>
+                    {renderResultBanner()}
+                    <RockPaperScissors onBack={handleExitMultiplayer} multiplayerSession={activeMultiplayerGame} onGameEnd={handleGameEnd} />
+                </>
+            );
         }
     }
 
@@ -32,6 +131,8 @@ const GamingHub = () => {
 
     return (
         <div style={styles.container}>
+            {renderResultBanner()}
+            
             {/* Header */}
             <div style={styles.header}>
                 <div style={styles.headerLeft}>
@@ -90,6 +191,14 @@ const GamingHub = () => {
                     </div>
                 </div>
             </div>
+            
+            <style>{`
+                @keyframes slideUpBounce {
+                    0% { transform: translate(-50%, 100%); opacity: 0; }
+                    60% { transform: translate(-50%, -10%); opacity: 1; }
+                    100% { transform: translate(-50%, 0); opacity: 1; }
+                }
+            `}</style>
         </div>
     );
 };
