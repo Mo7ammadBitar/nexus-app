@@ -326,6 +326,12 @@ async def create_challenge(
     result = await dms.insert_one(message_doc)
     message_doc["_id"] = result.inserted_id
 
+    cd = message_doc.get("challenge_data", {})
+    if cd and isinstance(cd.get("expires_at"), datetime):
+        cd = cd.copy()
+        cd["expires_at"] = cd["expires_at"].isoformat() + "Z"
+        message_doc["challenge_data"] = cd
+
     payload = _build_new_message_payload(message_doc, current_user)
 
     # Emit to opponent (triggers unread badge) and to sender (multi-tab sync)

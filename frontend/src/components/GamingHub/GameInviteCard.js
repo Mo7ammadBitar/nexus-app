@@ -27,9 +27,13 @@ const GameInviteCard = ({
         if (status !== 'pending' || !expiresAt) return;
 
         const updateTimer = () => {
+            if (!expiresAt) return;
             const now = new Date();
             const expiry = new Date(expiresAt);
+            if (isNaN(expiry.getTime())) return;
             const diff = expiry - now;
+
+            console.debug('[GameInviteCard] expiresAt:', expiresAt, '→ parsed:', expiry, 'diff:', diff);
 
             if (diff <= 0) {
                 setTimeLeft('Expired');
