@@ -28,12 +28,13 @@ const GameInviteCard = ({
 
         const updateTimer = () => {
             if (!expiresAt) return;
-            const now = new Date();
-            const expiry = new Date(expiresAt);
-            if (isNaN(expiry.getTime())) return;
-            const diff = expiry - now;
-
-            console.debug('[GameInviteCard] expiresAt:', expiresAt, '→ parsed:', expiry, 'diff:', diff);
+            const expiryTime = new Date(expiresAt).getTime();
+            if (isNaN(expiryTime)) {
+                console.warn('[GameInviteCard] Invalid expiresAt:', expiresAt);
+                return;
+            }
+            
+            const diff = expiryTime - Date.now();
 
             if (diff <= 0) {
                 setTimeLeft('Expired');

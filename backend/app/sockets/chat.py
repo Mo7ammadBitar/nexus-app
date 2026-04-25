@@ -540,7 +540,7 @@ class ChatNamespace(socketio.AsyncNamespace):
                         challenger_id = str(doc["sender_id"])
                         receiver_id = str(doc["receiver_id"])
                         
-                        await self.emit("dm_updated", updated_payload, room=challenger_id)
-                        await self.emit("dm_updated", updated_payload, room=receiver_id)
+                        await self.emit("dm_updated", updated_payload, room=f"user_{challenger_id}")
+await self.emit("dm_updated", updated_payload, room=f"user_{receiver_id}")
             except Exception as e:
                 print(f"Error handling game_leave status update: {e}")
