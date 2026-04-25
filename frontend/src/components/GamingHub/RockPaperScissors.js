@@ -183,7 +183,8 @@ const MultiplayerRPSView = ({ session, onBack, onGameEnd }) => {
         return () => {
             chatSocket.off('game:move_made', handleMoveMade);
             chatSocket.off('game:player_left', handlePlayerLeft);
-            chatSocket.emit('game_leave', { game_room_id: session.gameRoomId });
+            // Removed game_leave from cleanup to prevent Strict Mode bug.
+            // game_leave is now ONLY triggered by handleLeaveGame on explicit button click.
         };
     }, [session.gameRoomId]); // eslint-disable-line
 
