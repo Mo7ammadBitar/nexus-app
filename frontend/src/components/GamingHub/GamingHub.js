@@ -12,6 +12,7 @@ const GamingHub = () => {
     const [activeGame, setActiveGame] = useState(null);
     const activeMultiplayerGame = useUIStore(s => s.activeMultiplayerGame);
     const clearActiveMultiplayerGame = useUIStore(s => s.clearActiveMultiplayerGame);
+    const setShowGamingHub = useUIStore(s => s.setShowGamingHub);
     const [lastGameResult, setLastGameResult] = useState(null);
     const { socket } = useSocket('/chat');
 
@@ -47,12 +48,16 @@ const GamingHub = () => {
                 : activeMultiplayerGame.challengerId;
 
             clearActiveMultiplayerGame();
+            setShowGamingHub(false);
 
             if (theirId) {
-                navigate(`/friends/${theirId}`);
+                // If standard DM route is /dashboard/dms/:id or handled purely by state, 
+                // just navigating to /friends/:id or letting the state re-render DirectMessageArea works.
+                navigate(`/dashboard/dms/${theirId}`, { replace: true });
             }
         } else {
             clearActiveMultiplayerGame();
+            setShowGamingHub(false);
         }
     };
 
