@@ -42,23 +42,10 @@ const GamingHub = () => {
     const navigate = useNavigate();
 
     const handleExitMultiplayer = () => {
-        if (activeMultiplayerGame) {
-            const theirId = activeMultiplayerGame.myRole === 'challenger'
-                ? activeMultiplayerGame.opponentId
-                : activeMultiplayerGame.challengerId;
-
-            clearActiveMultiplayerGame();
-            setShowGamingHub(false);
-
-            if (theirId) {
-                // If standard DM route is /dashboard/dms/:id or handled purely by state, 
-                // just navigating to /friends/:id or letting the state re-render DirectMessageArea works.
-                navigate(`/dashboard/dms/${theirId}`, { replace: true });
-            }
-        } else {
-            clearActiveMultiplayerGame();
-            setShowGamingHub(false);
-        }
+        clearActiveMultiplayerGame();
+        
+        // Use the global state directly to avoid any stale closure issues
+        useUIStore.getState().setShowGamingHub(false);
     };
 
     const renderResultBanner = () => {
