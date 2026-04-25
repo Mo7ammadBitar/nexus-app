@@ -4,7 +4,7 @@ import RockPaperScissors from './RockPaperScissors';
 import TicTacToe from './TicTacToe';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../../store/uiStore';
-import { useSocket } from '../../hooks/useSocket';
+import { chatSocket } from '../../services/socket';
 import { gamesAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -14,10 +14,9 @@ const GamingHub = () => {
     const clearActiveMultiplayerGame = useUIStore(s => s.clearActiveMultiplayerGame);
     const setShowGamingHub = useUIStore(s => s.setShowGamingHub);
     const [lastGameResult, setLastGameResult] = useState(null);
-    const { socket } = useSocket('/chat');
 
     useEffect(() => {
-        if (!socket) return;
+        if (!chatSocket) return;
         const handleGameResult = (data) => {
             setLastGameResult({
                 result: data.result,
@@ -25,9 +24,9 @@ const GamingHub = () => {
                 game_type: data.game_type || 'Game'
             });
         };
-        socket.on('game:result', handleGameResult);
-        return () => socket.off('game:result', handleGameResult);
-    }, [socket]);
+        chatSocket.on('game:result', handleGameResult);
+        return () => chatSocket.off('game:result', handleGameResult);
+    }, []);
 
     const handleGameEnd = async (result) => {
         if (!activeMultiplayerGame?.challengeId) return;
