@@ -390,6 +390,11 @@ class DirectMessageService:
                 message["sender_is_premium"] = sender.get("is_premium", False)
                 message["sender_accent_color"] = sender.get("accent_color")
             
+            # Serialize challenge_data datetimes for game challenges
+            cd = message.get("challenge_data")
+            if cd and isinstance(cd.get("expires_at"), datetime):
+                cd["expires_at"] = cd["expires_at"].isoformat() + "Z"
+            
             result.append(message)
         
         # Reverse to get chronological order
