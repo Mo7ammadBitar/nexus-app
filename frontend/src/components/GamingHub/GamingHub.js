@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Gamepad2, ArrowLeft, Swords, Trophy, Hexagon, FileText, Scissors, X, Circle, Grid3x3 } from 'lucide-react';
 import RockPaperScissors from './RockPaperScissors';
 import TicTacToe from './TicTacToe';
+import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../../store/uiStore';
 import { useSocket } from '../../hooks/useSocket';
 import { gamesAPI } from '../../services/api';
@@ -37,8 +38,22 @@ const GamingHub = () => {
         }
     };
 
+    const navigate = useNavigate();
+
     const handleExitMultiplayer = () => {
-        clearActiveMultiplayerGame();
+        if (activeMultiplayerGame) {
+            const theirId = activeMultiplayerGame.myRole === 'challenger'
+                ? activeMultiplayerGame.opponentId
+                : activeMultiplayerGame.challengerId;
+
+            clearActiveMultiplayerGame();
+
+            if (theirId) {
+                navigate(`/friends/${theirId}`);
+            }
+        } else {
+            clearActiveMultiplayerGame();
+        }
     };
 
     const renderResultBanner = () => {

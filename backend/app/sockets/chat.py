@@ -515,3 +515,32 @@ class ChatNamespace(socketio.AsyncNamespace):
         
         await self.leave_room(sid, game_room_id)
         print(f"🎮 {user['username']} left game room {game_room_id}")
+
+        # Task 2: Challenge Card State Update (Closing the Room)
+        if game_room_id.startswith("game_"):
+            challenge_id = game_room_id[5:]
+            try:
+                from bson.objectid import ObjectId
+                from app.database import get_direct_messages_collection
+                from app.routers.games import _serialize_message, _build_updated_payload
+                
+                dms = get_direct_messages_collection()
+                doc = await dms.find_one({"_id": ObjectId(challenge_id)})
+                if doc:
+                    cd = doc.get("challenge_data", {})
+                    if cd.get("status") in ["pending", "accepted"]:
+                        await dms.update_one(
+                            {"_id": doc["_id"]},
+                            {"$set": {"challenge_data.status": "expired"}}
+                        )
+                        updated_doc = await dms.find_one({"_id": doc["_id"]})
+                        serialized = _serialize_message(updated_doc.copy())
+                        updated_payload = _build_updated_payload(updated_doc, serialized["challenge_data"])
+                        
+                        challenger_id = str(doc["sender_id"])
+                        receiver_id = str(doc["receiver_id"])
+                        
+                        await self.emit("dm_updated", updated_payload, room=challenger_id)
+                        await self.emit("dm_updated", updated_payload, room=receiver_id)
+            except Exception as e:
+                print(f"Error handling game_leave status update: {e}")
