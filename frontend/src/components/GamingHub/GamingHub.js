@@ -44,8 +44,11 @@ const GamingHub = () => {
     const handleExitMultiplayer = () => {
         clearActiveMultiplayerGame();
         
-        // Use the global state directly to avoid any stale closure issues
-        useUIStore.getState().setShowGamingHub(false);
+        // Push the hub closure to the next tick to ensure the game component 
+        // unmounts properly before we toggle the parent layout state.
+        setTimeout(() => {
+            useUIStore.getState().setShowGamingHub(false);
+        }, 50);
     };
 
     const renderResultBanner = () => {
