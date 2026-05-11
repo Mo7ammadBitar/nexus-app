@@ -243,7 +243,6 @@ async def send_message(
                 "created_at": datetime.utcnow()
             })
             
-            from app.socket_instance import sio
             if new_strikes == 1:
                 # Warning
                 await sio.emit("sentinel_warning", {
