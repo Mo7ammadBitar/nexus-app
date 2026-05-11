@@ -166,6 +166,11 @@ const ChatArea = () => {
     // Pinned messages state
     const [showPinnedPanel, setShowPinnedPanel] = useState(false);
 
+    // Pin confirmation dialog state
+    const [pinConfirmMsg, setPinConfirmMsg] = useState(null); // msg object to confirm pin/unpin
+    // Pin notifications (inline system messages)
+    const [pinNotifications, setPinNotifications] = useState([]);
+
     const inputRef = useRef(null); // Added for mobile focus
 
     // Check if current user is muted
@@ -185,6 +190,49 @@ const ChatArea = () => {
     useEffect(() => {
         injectAuraAnimations();
     }, []);
+
+    // Pin confirmation + notification handlers
+    const handlePinRequest = (msg) => {
+        setPinConfirmMsg(msg);
+        setHoveredMessageId(null);
+        setMobileActionMsg(null);
+    };
+
+    const confirmPin = async () => {
+        if (!pinConfirmMsg) return;
+        const { pinMessage, unpinMessage } = useServerStore.getState();
+        const wasPinned = pinConfirmMsg.is_pinned;
+        const msgId = pinConfirmMsg._id;
+        const msgUsername = pinConfirmMsg.display_name || pinConfirmMsg.username || 'Someone';
+
+        if (wasPinned) {
+            await unpinMessage(msgId);
+        } else {
+            await pinMessage(msgId);
+            // Add a pin notification
+            const notifId = `pin-${Date.now()}`;
+            setPinNotifications(prev => [...prev, {
+                id: notifId,
+                username: user?.display_name || user?.username || 'Someone',
+                messageId: msgId,
+                timestamp: new Date().toISOString(),
+            }]);
+            // Auto-dismiss after 30 seconds
+            setTimeout(() => {
+                setPinNotifications(prev => prev.filter(n => n.id !== notifId));
+            }, 30000);
+        }
+        setPinConfirmMsg(null);
+    };
+
+    const scrollToMessage = (messageId) => {
+        setHighlightedMessageId(messageId);
+        const element = messageRefs.current[messageId];
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => setHighlightedMessageId(null), 3000);
+        }
+    };
 
     // Helper to get premium data for a user from members list
     const getMemberPremiumData = useCallback((userId) => {
@@ -813,6 +861,10 @@ const ChatArea = () => {
                     0%, 100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
                     50% { box-shadow: 0 0 14px rgba(239, 68, 68, 0.9); }
                 }
+                @keyframes slideIn {
+                    from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+                    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+                }
             `}</style>
             {/* Header */}
             <div style={{
@@ -1167,11 +1219,7 @@ const ChatArea = () => {
                                             {(isModOrOwner) && (
                                                 <TouchableOpacity
                                                     style={[styles.actionIconBtn, msg.is_pinned && styles.pinnedIconBtn]}
-                                                    onPress={() => {
-                                                        const { pinMessage, unpinMessage } = useServerStore.getState();
-                                                        if (msg.is_pinned) unpinMessage(msg._id);
-                                                        else pinMessage(msg._id);
-                                                    }}
+                                                    onPress={() => handlePinRequest(msg)}
                                                     title={msg.is_pinned ? t('chat.unpin_msg', 'Unpin Message') : t('chat.pin_msg', 'Pin Message')}
                                                 >
                                                     <View style={msg.is_pinned ? { transform: [{ rotate: '45deg' }] } : {}}>
@@ -1513,6 +1561,119 @@ const ChatArea = () => {
                     </Text>
                 </div>
             )}
+
+            {/* Pin Confirmation Modal */}
+            {pinConfirmMsg && (
+                <View style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 2000,
+                }} onClick={() => setPinConfirmMsg(null)}>
+                    <View style={{
+                        backgroundColor: '#1e1e3a',
+                        borderRadius: 16,
+                        padding: 28,
+                        width: 340,
+                        alignItems: 'center',
+                        borderWidth: 1,
+                        borderColor: 'rgba(124, 58, 237, 0.3)',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                    }} onClick={e => e.stopPropagation()}>
+                        <View style={{ marginBottom: 16 }}>
+                            <Pin size={36} color="#a78bfa" />
+                        </View>
+                        <Text style={{ color: '#f3f4f6', fontSize: 18, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' }}>
+                            {pinConfirmMsg.is_pinned ? 'Unpin this message?' : 'Pin this message?'}
+                        </Text>
+                        <Text style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', marginBottom: 6, lineHeight: 18 }}>
+                            {pinConfirmMsg.is_pinned
+                                ? 'This message will be removed from the pinned list.'
+                                : 'This message will be pinned for everyone in this channel to see.'}
+                        </Text>
+                        {/* Preview of the message */}
+                        <View style={{
+                            backgroundColor: 'rgba(255,255,255,0.05)',
+                            borderRadius: 8,
+                            padding: 10,
+                            marginBottom: 20,
+                            width: '100%',
+                            borderLeftWidth: 3,
+                            borderLeftColor: '#7c3aed',
+                        }}>
+                            <Text style={{ color: '#a78bfa', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>
+                                {pinConfirmMsg.display_name || pinConfirmMsg.username}
+                            </Text>
+                            <Text style={{ color: '#d1d5db', fontSize: 13 }} numberOfLines={3}>
+                                {pinConfirmMsg.content || '(attachment)'}
+                            </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                            <TouchableOpacity
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: 'rgba(255,255,255,0.08)',
+                                    paddingVertical: 12,
+                                    borderRadius: 10,
+                                    alignItems: 'center',
+                                }}
+                                onPress={() => setPinConfirmMsg(null)}
+                            >
+                                <Text style={{ color: '#b4b4b4', fontWeight: '700', fontSize: 14 }}>Hell Nah</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={{
+                                    flex: 1,
+                                    backgroundImage: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                                    paddingVertical: 12,
+                                    borderRadius: 10,
+                                    alignItems: 'center',
+                                    boxShadow: '0 4px 12px rgba(124, 58, 237, 0.4)',
+                                }}
+                                onPress={confirmPin}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Hell Yeah</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            )}
+
+            {/* Pin Notification Banners */}
+            {pinNotifications.map(notif => (
+                <View key={notif.id} style={{
+                    position: 'absolute',
+                    top: 70,
+                    left: '50%',
+                    transform: [{ translateX: '-50%' }],
+                    backgroundColor: 'rgba(30, 30, 58, 0.95)',
+                    borderRadius: 10,
+                    paddingVertical: 10,
+                    paddingHorizontal: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    zIndex: 1500,
+                    borderWidth: 1,
+                    borderColor: 'rgba(124, 58, 237, 0.3)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                    animation: 'slideIn 0.3s ease-out',
+                }}>
+                    <Pin size={14} color="#a78bfa" />
+                    <Text style={{ color: '#e0e0e0', fontSize: 13 }}>
+                        <Text style={{ fontWeight: '700' }}>{notif.username}</Text>
+                        {' pinned '}
+                    </Text>
+                    <TouchableOpacity onPress={() => scrollToMessage(notif.messageId)}>
+                        <Text style={{ color: '#818cf8', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' }}>a message</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setPinNotifications(prev => prev.filter(n => n.id !== notif.id))} style={{ marginLeft: 8 }}>
+                        <X size={14} color="#6b7280" />
+                    </TouchableOpacity>
+                </View>
+            ))}
         </View >
     );
 };
