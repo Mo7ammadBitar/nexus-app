@@ -84,8 +84,10 @@ const markdownComponents = (customStyle) => ({
         );
     },
     // Code block wrapper (pre tag)
+    // Note: children must be wrapped in <Text> because react-native-web's
+    // <View> cannot accept raw text nodes — causes "Unexpected text node" crash.
     pre: ({ children }) => (
-        <View style={styles.codeBlock}>{children}</View>
+        <View style={styles.codeBlock}><Text>{children}</Text></View>
     ),
 });
 

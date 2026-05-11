@@ -8,6 +8,7 @@ import os
 import uuid
 import aiofiles
 import traceback
+from datetime import datetime
 from bson import ObjectId
 from app.database import get_users_collection
 from app.socket_instance import sio
@@ -19,6 +20,29 @@ from app.config import get_settings
 
 settings = get_settings()
 router = APIRouter(prefix="/messages", tags=["Messages"])
+
+
+def _serialize_message(data):
+    """Recursively convert ObjectId and datetime values to strings for JSON serialization."""
+    if isinstance(data, list):
+        return [_serialize_message(item) for item in data]
+    if isinstance(data, dict):
+        result = {}
+        for k, v in data.items():
+            if isinstance(v, ObjectId):
+                result[k] = str(v)
+            elif isinstance(v, datetime):
+                result[k] = v.isoformat()
+            elif isinstance(v, (dict, list)):
+                result[k] = _serialize_message(v)
+            else:
+                result[k] = v
+        return result
+    if isinstance(data, ObjectId):
+        return str(data)
+    if isinstance(data, datetime):
+        return data.isoformat()
+    return data
 
 
 # Pydantic models for request bodies
@@ -327,15 +351,11 @@ async def send_message(
     message["display_name"] = current_user.get("display_name")
     message["avatar_url"] = current_user.get("avatar_url")
     
-    # >>> ADD THESE LINES: Broadcast the new message to the channel room <<<
+    # Broadcast the new message to the channel room
     room = f"channel_{channel_id}"
     
-    # Serialize datetime before emitting
-    safe_message = message.copy()
-    if "timestamp" in safe_message and hasattr(safe_message["timestamp"], "isoformat"):
-        safe_message["timestamp"] = safe_message["timestamp"].isoformat()
-    if "edited_at" in safe_message and safe_message["edited_at"] and hasattr(safe_message["edited_at"], "isoformat"):
-        safe_message["edited_at"] = safe_message["edited_at"].isoformat()
+    # Serialize the entire message (converts datetime, ObjectId, and nested structures)
+    safe_message = _serialize_message(message)
         
     await sio.emit("new_message", safe_message, room=room, namespace="/chat")
     
@@ -349,7 +369,7 @@ async def send_message(
     except Exception:
         pass  # Non-critical
     
-    return {"message": "Message sent", "data": message}
+    return {"message": "Message sent", "data": safe_message}
 
 
 @router.post("/forward/{target_channel_id}")
@@ -424,11 +444,12 @@ async def forward_message(
             detail="Failed to forward message"
         )
     
-    # Broadcast the new message
+    # Broadcast the new message (serialize to prevent datetime/ObjectId crash)
     room = f"channel_{target_channel_id}"
-    await sio.emit("new_message", forwarded_message, room=room, namespace="/chat")
+    safe_forwarded = _serialize_message(forwarded_message)
+    await sio.emit("new_message", safe_forwarded, room=room, namespace="/chat")
     
-    return {"message": "Message forwarded", "data": forwarded_message}
+    return {"message": "Message forwarded", "data": safe_forwarded}
 
 
 # REACTION ENDPOINTS - Must be defined before /{channel_id}/{message_id} routes
@@ -563,18 +584,15 @@ async def pin_message(
         if not updated_message:
             raise HTTPException(status_code=500, detail="Failed to pin message - service returned None")
         
-        # Convert datetime to ISO string for JSON serialization
-        if "timestamp" in updated_message and hasattr(updated_message["timestamp"], "isoformat"):
-            updated_message["timestamp"] = updated_message["timestamp"].isoformat()
-        if "edited_at" in updated_message and updated_message["edited_at"] and hasattr(updated_message["edited_at"], "isoformat"):
-            updated_message["edited_at"] = updated_message["edited_at"].isoformat()
+        # Serialize for JSON safety (converts datetime, ObjectId, etc.)
+        safe_pinned = _serialize_message(updated_message)
             
         # Broadcast update
         room = f"channel_{message['channel_id']}"
-        await sio.emit("message_updated", updated_message, room=room, namespace="/chat")
+        await sio.emit("message_updated", safe_pinned, room=room, namespace="/chat")
         
         print(f"[PIN] Successfully pinned message: {message_id}")
-        return {"message": "Message pinned", "data": updated_message}
+        return {"message": "Message pinned", "data": safe_pinned}
         
     except HTTPException:
         raise
@@ -620,18 +638,15 @@ async def unpin_message(
         if not updated_message:
             raise HTTPException(status_code=500, detail="Failed to unpin message - service returned None")
         
-        # Convert datetime to ISO string for JSON serialization
-        if "timestamp" in updated_message and hasattr(updated_message["timestamp"], "isoformat"):
-            updated_message["timestamp"] = updated_message["timestamp"].isoformat()
-        if "edited_at" in updated_message and updated_message["edited_at"] and hasattr(updated_message["edited_at"], "isoformat"):
-            updated_message["edited_at"] = updated_message["edited_at"].isoformat()
+        # Serialize for JSON safety (converts datetime, ObjectId, etc.)
+        safe_unpinned = _serialize_message(updated_message)
             
         # Broadcast update
         room = f"channel_{message['channel_id']}"
-        await sio.emit("message_updated", updated_message, room=room, namespace="/chat")
+        await sio.emit("message_updated", safe_unpinned, room=room, namespace="/chat")
         
         print(f"[UNPIN] Successfully unpinned message: {message_id}")
-        return {"message": "Message unpinned", "data": updated_message}
+        return {"message": "Message unpinned", "data": safe_unpinned}
         
     except HTTPException:
         raise
@@ -757,11 +772,12 @@ async def edit_message(
     updated_message["display_name"] = current_user.get("display_name")
     updated_message["avatar_url"] = current_user.get("avatar_url")
     
-    # Broadcast update
+    # Broadcast update (serialize to prevent datetime/ObjectId crash)
     room = f"channel_{channel_id}"
-    await sio.emit("message_updated", updated_message, room=room, namespace="/chat")
+    safe_updated = _serialize_message(updated_message)
+    await sio.emit("message_updated", safe_updated, room=room, namespace="/chat")
     
-    return {"message": "Message updated", "data": updated_message}
+    return {"message": "Message updated", "data": safe_updated}
 
 
 @router.get("/channel/{channel_id}/pins")
