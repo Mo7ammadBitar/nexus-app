@@ -168,8 +168,6 @@ const ChatArea = () => {
 
     // Pin confirmation dialog state
     const [pinConfirmMsg, setPinConfirmMsg] = useState(null); // msg object to confirm pin/unpin
-    // Pin notifications (inline system messages)
-    const [pinNotifications, setPinNotifications] = useState([]);
 
     const inputRef = useRef(null); // Added for mobile focus
 
@@ -203,24 +201,21 @@ const ChatArea = () => {
         const { pinMessage, unpinMessage } = useServerStore.getState();
         const wasPinned = pinConfirmMsg.is_pinned;
         const msgId = pinConfirmMsg._id;
-        const msgUsername = pinConfirmMsg.display_name || pinConfirmMsg.username || 'Someone';
 
         if (wasPinned) {
             await unpinMessage(msgId);
         } else {
             await pinMessage(msgId);
-            // Add a pin notification
-            const notifId = `pin-${Date.now()}`;
-            setPinNotifications(prev => [...prev, {
-                id: notifId,
+            // Add inline pin notification (Discord-style system message)
+            addMessage({
+                _id: `pin-notif-${Date.now()}`,
+                type: 'pin_notification',
+                content: '',
+                user_id: user?._id,
                 username: user?.display_name || user?.username || 'Someone',
-                messageId: msgId,
+                pinned_message_id: msgId,
                 timestamp: new Date().toISOString(),
-            }]);
-            // Auto-dismiss after 30 seconds
-            setTimeout(() => {
-                setPinNotifications(prev => prev.filter(n => n.id !== notifId));
-            }, 30000);
+            });
         }
         setPinConfirmMsg(null);
     };
@@ -930,6 +925,38 @@ const ChatArea = () => {
                     </View>
                 ) : (
                     messages.map((msg, index) => {
+                        // --- Pin notification system message (Discord-style) ---
+                        if (msg.type === 'pin_notification') {
+                            return (
+                                <View key={msg._id} style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    paddingVertical: 6,
+                                    paddingHorizontal: 20,
+                                    gap: 10,
+                                }}>
+                                    <Pin size={16} color="#a78bfa" />
+                                    <Text style={{ color: '#9ca3af', fontSize: 13, flexShrink: 1, flexWrap: 'wrap' }}>
+                                        <Text style={{ color: '#e0e0e0', fontWeight: '700' }}>{msg.username}</Text>
+                                        {' pinned '}
+                                        <Text
+                                            style={{ color: '#818cf8', fontWeight: '700', cursor: 'pointer' }}
+                                            onPress={() => scrollToMessage(msg.pinned_message_id)}
+                                        >a message</Text>
+                                        {' to this channel. '}
+                                        <Text
+                                            style={{ color: '#9ca3af', fontWeight: '700', cursor: 'pointer' }}
+                                            onPress={() => setShowPinnedPanel(true)}
+                                        >See all pinned messages</Text>
+                                        {'. '}
+                                    </Text>
+                                    <Text style={{ color: '#6b7280', fontSize: 11 }}>
+                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </Text>
+                                </View>
+                            );
+                        }
+
                         const isHovered = hoveredMessageId === msg._id;
                         const isEditing = editingMessageId === msg._id;
                         const isDeleting = deleteConfirmId === msg._id;
@@ -1641,39 +1668,6 @@ const ChatArea = () => {
                 </View>
             )}
 
-            {/* Pin Notification Banners */}
-            {pinNotifications.map(notif => (
-                <View key={notif.id} style={{
-                    position: 'absolute',
-                    top: 70,
-                    left: '50%',
-                    transform: [{ translateX: '-50%' }],
-                    backgroundColor: 'rgba(30, 30, 58, 0.95)',
-                    borderRadius: 10,
-                    paddingVertical: 10,
-                    paddingHorizontal: 16,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                    zIndex: 1500,
-                    borderWidth: 1,
-                    borderColor: 'rgba(124, 58, 237, 0.3)',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-                    animation: 'slideIn 0.3s ease-out',
-                }}>
-                    <Pin size={14} color="#a78bfa" />
-                    <Text style={{ color: '#e0e0e0', fontSize: 13 }}>
-                        <Text style={{ fontWeight: '700' }}>{notif.username}</Text>
-                        {' pinned '}
-                    </Text>
-                    <TouchableOpacity onPress={() => scrollToMessage(notif.messageId)}>
-                        <Text style={{ color: '#818cf8', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' }}>a message</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setPinNotifications(prev => prev.filter(n => n.id !== notif.id))} style={{ marginLeft: 8 }}>
-                        <X size={14} color="#6b7280" />
-                    </TouchableOpacity>
-                </View>
-            ))}
         </View >
     );
 };
