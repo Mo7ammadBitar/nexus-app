@@ -74,7 +74,16 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
 
 
+from pydantic import ValidationError
+import sys
+
 @lru_cache()
 def get_settings() -> Settings:
     """Get cached settings instance"""
-    return Settings()
+    try:
+        return Settings()
+    except ValidationError as e:
+        print("CRITICAL ERROR: Missing or invalid environment variables!")
+        for error in e.errors():
+            print(f" - {error['loc'][0]}: {error['msg']}")
+        sys.exit(1)

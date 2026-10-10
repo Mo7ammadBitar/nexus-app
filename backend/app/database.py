@@ -93,6 +93,8 @@ class Database:
             "expires_at",
             expireAfterSeconds=300  # Auto-delete 5 min after expiry
         )
+        # Payments collection indexes
+        await cls.db.payments.create_index("order_id", unique=True)
         
         print("✅ Database indexes created")
 
@@ -167,3 +169,8 @@ def get_quest_progress_collection():
 def get_game_challenges_collection():
     _check_db()
     return Database.db.game_challenges
+
+
+def get_payments_collection():
+    _check_db()
+    return Database.db.payments

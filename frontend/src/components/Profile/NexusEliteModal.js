@@ -49,7 +49,7 @@ const NexusEliteModal = ({ onClose }) => {
                         <Text style={styles.planPrice}>$4.99<Text style={styles.period}>{t('elite.period_mo', '/mo')}</Text></Text>
                         <div style={{ width: '100%', marginTop: 16 }}>
                             <PayPalCheckoutButton
-                                amount="4.99"
+                                itemId="monthly"
                                 onApproved={(orderId) => handleSubscribe(orderId, 'monthly')}
                             />
                         </div>
@@ -63,7 +63,7 @@ const NexusEliteModal = ({ onClose }) => {
                         <Text style={styles.savings}>{t('elite.savings_17', 'Save 17%')}</Text>
                         <div style={{ width: '100%', marginTop: 16 }}>
                             <PayPalCheckoutButton
-                                amount="39.99"
+                                itemId="yearly"
                                 onApproved={(orderId) => handleSubscribe(orderId, 'yearly')}
                             />
                         </div>

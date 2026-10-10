@@ -36,7 +36,22 @@ class VoiceNamespace(socketio.AsyncNamespace):
         if not user_id:
             raise ConnectionRefusedError("Malformed token: missing subject")
         
-        username = payload.get("username", "Unknown")
+        from app.database import get_users_collection
+        from bson import ObjectId
+        
+        users = get_users_collection()
+        user = await users.find_one({"_id": ObjectId(user_id)})
+        
+        if user is None:
+            raise ConnectionRefusedError("User not found")
+            
+        if user.get("is_deleted", False):
+            raise ConnectionRefusedError("Account has been deleted")
+            
+        if user.get("is_banned", False):
+            raise ConnectionRefusedError("Account is banned")
+        
+        username = user.get("username", payload.get("username", "Unknown"))
         
         # Store verified identity for use in join_voice / join_dm_call
         self.verified_identities[sid] = {
@@ -94,7 +109,7 @@ class VoiceNamespace(socketio.AsyncNamespace):
         }
 
         # Add to room
-        self.enter_room(sid, room_id)
+        await self.enter_room(sid, room_id)
         
         # Get other users in room
         users_in_room = []
@@ -120,14 +135,21 @@ class VoiceNamespace(socketio.AsyncNamespace):
         """
         user_to_signal = payload.get("userToSignal")
         
+        # Room Isolation Check
+        sender = self.users.get(sid)
+        target = self.users.get(user_to_signal)
+        if not sender or not target or sender.get("room_id") != target.get("room_id"):
+            print(f"⚠️ Blocked cross-room signal from {sid} to {user_to_signal}")
+            return
+            
         # Emit 'user_joined' to the *existing* user, containing the signal from the new user
         # This matches the 'simple-peer' tutorial pattern where 'user_joined' serves as 'incoming_call'
         await self.emit("user_joined", {
             "signal": payload.get("signal"),
             "callerID": payload.get("callerID"),
-            "username": self.users.get(sid, {}).get("username"),
-            "user_id": self.users.get(sid, {}).get("user_id"),
-            "is_muted": self.users.get(sid, {}).get("is_muted", False)
+            "username": sender.get("username"),
+            "user_id": sender.get("user_id"),
+            "is_muted": sender.get("is_muted", False)
         }, to=user_to_signal)
 
     async def on_returning_signal(self, sid, payload):
@@ -136,6 +158,14 @@ class VoiceNamespace(socketio.AsyncNamespace):
         payload: { callerID: sid, signal: dict }
         """
         caller_id = payload.get("callerID")
+        
+        # Room Isolation Check
+        sender = self.users.get(sid)
+        target = self.users.get(caller_id)
+        if not sender or not target or sender.get("room_id") != target.get("room_id"):
+            print(f"⚠️ Blocked cross-room signal from {sid} to {caller_id}")
+            return
+            
         await self.emit("receiving_returned_signal", {
             "signal": payload.get("signal"),
             "id": sid 
@@ -193,7 +223,7 @@ class VoiceNamespace(socketio.AsyncNamespace):
             print(f"📤 Broadcasted {event_name}: {sid} to room {room_id}")
             
             # Now leave the socket room
-            self.leave_room(sid, room_id)
+            await self.leave_room(sid, room_id)
             
         else:
             print(f"⚠️ {user_info['username']} left voice, but was not in the self.users dictionary")
@@ -248,7 +278,7 @@ class VoiceNamespace(socketio.AsyncNamespace):
         }
 
         # Join the strict Socket.IO room
-        self.enter_room(sid, room_id)
+        await self.enter_room(sid, room_id)
         
         # Gathering peers already in this specific DM room (should be max 1 other)
         users_in_room = []
@@ -272,12 +302,19 @@ class VoiceNamespace(socketio.AsyncNamespace):
         """
         user_to_signal = payload.get("userToSignal")
         
+        # Room Isolation Check
+        sender = self.users.get(sid)
+        target = self.users.get(user_to_signal)
+        if not sender or not target or sender.get("room_id") != target.get("room_id"):
+            print(f"⚠️ Blocked cross-room DM signal from {sid} to {user_to_signal}")
+            return
+            
         await self.emit("dm_user_joined", {
             "signal": payload.get("signal"),
             "callerID": payload.get("callerID"),
-            "username": self.users.get(sid, {}).get("username"),
-            "user_id": self.users.get(sid, {}).get("user_id"),
-            "is_muted": self.users.get(sid, {}).get("is_muted", False)
+            "username": sender.get("username"),
+            "user_id": sender.get("user_id"),
+            "is_muted": sender.get("is_muted", False)
         }, to=user_to_signal)
 
     async def on_returning_dm_signal(self, sid, payload):
@@ -286,6 +323,14 @@ class VoiceNamespace(socketio.AsyncNamespace):
         payload: { callerID: sid, signal: dict }
         """
         caller_id = payload.get("callerID")
+        
+        # Room Isolation Check
+        sender = self.users.get(sid)
+        target = self.users.get(caller_id)
+        if not sender or not target or sender.get("room_id") != target.get("room_id"):
+            print(f"⚠️ Blocked cross-room DM signal from {sid} to {caller_id}")
+            return
+            
         await self.emit("dm_receiving_returned_signal", {
             "signal": payload.get("signal"),
             "id": sid 

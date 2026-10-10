@@ -210,7 +210,7 @@ const NexusPrimeScreen = () => {
                         {/* PayPal Checkout */}
                         <div style={s.paypalWrap}>
                             <PayPalCheckoutButton
-                                amount={amount}
+                                itemId={billingCycle}
                                 onApproved={(orderId) => handlePayPalApproval(orderId)}
                             />
                         </div>

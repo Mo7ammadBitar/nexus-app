@@ -180,29 +180,27 @@ async def buy_relic(relic_id: str, current_user: dict = Depends(get_current_user
             detail="You already own this relic."
         )
 
-    # Check balance
-    current_shards = current_user.get("aether_shards", 0) or 0
-    if current_shards < relic["price"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Insufficient Aether Shards. Need {relic['price']}, have {current_shards}."
-        )
-
-    # Deduct and add
-    new_balance = current_shards - relic["price"]
-    owned.append(relic_id)
-
     users = get_users_collection()
-    await users.update_one(
-        {"_id": ObjectId(current_user["_id"])},
+    result = await users.update_one(
         {
-            "$set": {
-                "aether_shards": new_balance,
-                "owned_relics": owned,
-                "updated_at": datetime.utcnow()
-            }
+            "_id": ObjectId(current_user["_id"]),
+            "aether_shards": {"$gte": relic["price"]}
+        },
+        {
+            "$inc": {"aether_shards": -relic["price"]},
+            "$addToSet": {"owned_relics": relic_id},
+            "$set": {"updated_at": datetime.utcnow()}
         }
     )
+
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Insufficient Aether Shards or concurrent transaction occurred."
+        )
+        
+    owned.append(relic_id)
+    new_balance = current_user.get("aether_shards", 0) - relic["price"]
 
     return {
         "message": f"Attuned to {relic['name']}!",
@@ -322,26 +320,26 @@ async def buy_server_boost(
     current_user: dict = Depends(get_current_user)
 ):
     """Purchase a permanent Server Boost for 1000 Aether Shards. Adds to user inventory."""
-    # Check shard balance
-    current_shards = current_user.get("aether_shards", 0) or 0
-    if current_shards < BOOST_COST:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Insufficient Aether Shards. Need {BOOST_COST}, have {current_shards}."
-        )
-
-    # Deduct shards from user and increment available_server_boosts
-    new_balance = current_shards - BOOST_COST
-    new_boosts = current_user.get("available_server_boosts", 0) + 1
-    
     users = get_users_collection()
-    await users.update_one(
-        {"_id": ObjectId(current_user["_id"])},
+    result = await users.update_one(
         {
-            "$set": {"aether_shards": new_balance, "updated_at": datetime.utcnow()},
-            "$inc": {"available_server_boosts": 1}
+            "_id": ObjectId(current_user["_id"]),
+            "aether_shards": {"$gte": BOOST_COST}
+        },
+        {
+            "$inc": {"aether_shards": -BOOST_COST, "available_server_boosts": 1},
+            "$set": {"updated_at": datetime.utcnow()}
         }
     )
+
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Insufficient Aether Shards. Need {BOOST_COST}."
+        )
+
+    new_balance = current_user.get("aether_shards", 0) - BOOST_COST
+    new_boosts = current_user.get("available_server_boosts", 0) + 1
 
     return {
         "message": f"Server Boost Purchased! You now have {new_boosts} Boost(s) in your Inventory.",

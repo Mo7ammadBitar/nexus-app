@@ -423,7 +423,7 @@ const EtherealShop = ({ isOpen, onClose }) => {
 
                                         <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                                             <PayPalCheckoutButton
-                                                amount={pack.price}
+                                                itemId={pack.id}
                                                 onApproved={(orderId) => handleBuyShards(orderId, pack.id)}
                                             />
                                         </div>

@@ -1,27 +1,22 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { PayPalButtons } from '@paypal/react-paypal-js';
 
+import api from '../../services/api';
+import toast from 'react-hot-toast';
+
 /**
- * PayPalCheckoutButton — Creates a PayPal order client-side,
+ * PayPalCheckoutButton — Creates a PayPal order server-side,
  * then passes the orderID to the parent for SERVER-SIDE verification.
  *
  * Props:
- *   amount    (string)   — e.g. "4.99"
+ *   itemId    (string)   — e.g. "pack_small" or "monthly"
  *   onApproved (function) — called with (orderID) after user approves in PayPal
  */
-const PayPalCheckoutButton = ({ amount, onApproved }) => {
-    const sanitizedAmount = useMemo(() => {
-        if (!amount && amount !== 0) return '1.00';
-        const cleaned = String(amount).replace(/[^0-9.]/g, '');
-        const parsed = parseFloat(cleaned);
-        if (isNaN(parsed) || parsed <= 0) return '1.00';
-        return parsed.toFixed(2);
-    }, [amount]);
-
+const PayPalCheckoutButton = ({ itemId, onApproved }) => {
     return (
         <div style={{ width: '100%', minWidth: 150, margin: '0 auto' }}>
             <PayPalButtons
-                forceReRender={[sanitizedAmount]}
+                forceReRender={[itemId]}
                 style={{
                     layout: 'horizontal',
                     color: 'gold',
@@ -30,21 +25,18 @@ const PayPalCheckoutButton = ({ amount, onApproved }) => {
                     height: 40,
                     tagline: false,
                 }}
-                createOrder={(data, actions) => {
-                    console.log('[PayPal] Creating order — amount:', sanitizedAmount);
-                    return actions.order.create({
-                        purchase_units: [
-                            {
-                                description: 'Nexus Purchase',
-                                amount: {
-                                    currency_code: 'USD',
-                                    value: sanitizedAmount,
-                                },
-                            },
-                        ],
-                        // Do NOT auto-capture — let our backend capture & verify
-                        intent: 'CAPTURE',
-                    });
+                createOrder={async (data, actions) => {
+                    try {
+                        console.log('[PayPal] Creating order server-side for item:', itemId);
+                        const response = await api.post('/payments/create-order', {
+                            item_id: itemId
+                        });
+                        return response.data.order_id;
+                    } catch (err) {
+                        console.error('[PayPal] Order creation failed:', err);
+                        toast.error('Failed to create order. Please try again.');
+                        throw err; // Stop PayPal flow
+                    }
                 }}
                 onApprove={async (data) => {
                     // User approved in PayPal popup — send orderID to parent

@@ -23,11 +23,27 @@ class VoiceNamespace(socketio.AsyncNamespace):
     
     async def on_connect(self, sid, environ, auth=None):
         """Handle user connection"""
-        if not auth or "user_id" not in auth:
+        if not auth or not auth.get("token"):
             return False
         
-        user_id = auth["user_id"]
-        username = auth.get("username", "Anonymous")
+        from app.utils.security import decode_access_token
+        payload = decode_access_token(auth["token"])
+        if payload is None:
+            return False
+            
+        user_id = payload.get("sub")
+        if not user_id:
+            return False
+            
+        from app.database import get_users_collection
+        from bson import ObjectId
+        users = get_users_collection()
+        user = await users.find_one({"_id": ObjectId(user_id)})
+        
+        if user is None or user.get("is_deleted", False) or user.get("is_banned", False):
+            return False
+        
+        username = user.get("username", "Anonymous")
         
         self.connected_users[sid] = {
             "user_id": user_id,
@@ -68,7 +84,7 @@ class VoiceNamespace(socketio.AsyncNamespace):
                 "username": user["username"]
             }, room=room, skip_sid=sid)
             
-            self.leave_room(sid, room)
+            await self.leave_room(sid, room)
             
             # Clean up empty channel
             if not self.voice_channels[channel_id]:
@@ -97,7 +113,7 @@ class VoiceNamespace(socketio.AsyncNamespace):
         
         # Join channel
         room = f"voice_{channel_id}"
-        self.enter_room(sid, room)
+        await self.enter_room(sid, room)
         self.voice_channels[channel_id][user["user_id"]] = sid
         user["current_channel"] = channel_id
         

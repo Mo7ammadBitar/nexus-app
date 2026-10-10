@@ -183,62 +183,60 @@ async def claim_quest(quest_id: str, current_user: dict = Depends(get_current_us
             detail=f"Quest not completed. Progress: {current_progress}/{quest['requirement_value']}"
         )
 
+    from datetime import timedelta
     quest_progress = get_quest_progress_collection()
     now = datetime.utcnow()
 
-    # Check existing progress record
-    existing = await quest_progress.find_one({"user_id": user_id, "quest_id": quest_id})
-
-    if existing and existing.get("claimed", False):
-        if not quest["is_repeatable"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Quest reward already claimed."
-            )
-        else:
-            # Repeatable quest — check 24h cooldown
-            last_claimed = existing.get("claimed_at")
-            if last_claimed:
-                elapsed = (now - last_claimed).total_seconds()
-                if elapsed < 86400:
-                    remaining_hours = int((86400 - elapsed) / 3600)
-                    remaining_mins = int(((86400 - elapsed) % 3600) / 60)
-                    raise HTTPException(
-                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                        detail=f"You can claim this again in {remaining_hours}h {remaining_mins}m."
-                    )
-
-    # Award shards
-    users = get_users_collection()
-    current_shards = current_user.get("aether_shards", 0) or 0
-    new_balance = current_shards + quest["reward_shards"]
-
-    await users.update_one(
-        {"_id": ObjectId(user_id)},
-        {
-            "$set": {
-                "aether_shards": new_balance,
-                "updated_at": now
-            }
-        }
-    )
-
-    # Upsert progress record
+    # 1. Ensure document exists so we can atomically check 'claimed'
     await quest_progress.update_one(
         {"user_id": user_id, "quest_id": quest_id},
+        {"$setOnInsert": {"claimed": False, "user_id": user_id, "quest_id": quest_id}},
+        upsert=True
+    )
+
+    # 2. Atomic claim update
+    cutoff = now - timedelta(hours=24)
+    query = {"user_id": user_id, "quest_id": quest_id}
+    
+    if not quest["is_repeatable"]:
+        query["claimed"] = False
+    else:
+        query["$or"] = [
+            {"claimed": False},
+            {"claimed_at": {"$lt": cutoff}}
+        ]
+
+    result = await quest_progress.update_one(
+        query,
         {
             "$set": {
-                "user_id": user_id,
-                "quest_id": quest_id,
                 "current_progress": current_progress,
                 "is_completed": True,
                 "claimed": True,
                 "completed_at": now,
                 "claimed_at": now,
             }
-        },
-        upsert=True
+        }
     )
+
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Quest reward already claimed or on cooldown."
+        )
+
+    # Award shards atomically
+    users = get_users_collection()
+    await users.update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$inc": {"aether_shards": quest["reward_shards"]},
+            "$set": {"updated_at": now}
+        }
+    )
+
+    # Approximate for return display since it was an atomic inc
+    new_balance = current_user.get("aether_shards", 0) + quest["reward_shards"]
 
     return {
         "message": f"+{quest['reward_shards']} Aether Shards earned from '{quest['name']}'!",

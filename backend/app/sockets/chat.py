@@ -18,7 +18,7 @@ from app.utils.security import decode_access_token
 online_users = {}
 
 
-def _verify_socket_token(auth: dict) -> dict:
+async def _verify_socket_token(auth: dict) -> dict:
     """
     Verify JWT token from Socket.IO auth payload.
     Returns decoded JWT payload if valid.
@@ -39,7 +39,19 @@ def _verify_socket_token(auth: dict) -> dict:
     if not user_id:
         raise ConnectionRefusedError("Malformed token: missing subject")
     
-    username = payload.get("username", "Anonymous")
+    users = get_users_collection()
+    user = await users.find_one({"_id": ObjectId(user_id)})
+    
+    if user is None:
+        raise ConnectionRefusedError("User not found")
+        
+    if user.get("is_deleted", False):
+        raise ConnectionRefusedError("Account has been deleted")
+        
+    if user.get("is_banned", False):
+        raise ConnectionRefusedError("Account is banned")
+    
+    username = user.get("username", payload.get("username", "Anonymous"))
     
     return {"user_id": user_id, "username": username}
 
@@ -81,7 +93,7 @@ class ChatNamespace(socketio.AsyncNamespace):
         Rejects connection if token is missing, expired, or invalid.
         """
         try:
-            verified = _verify_socket_token(auth)
+            verified = await _verify_socket_token(auth)
         except ConnectionRefusedError:
             raise  # Let socketio handle the rejection
         

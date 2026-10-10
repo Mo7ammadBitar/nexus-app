@@ -408,14 +408,6 @@ async def apply_server_boost(
     current_user: dict = Depends(get_current_user)
 ):
     """Apply a server boost from inventory to a target server."""
-    # Verify user has a boost
-    available_boosts = current_user.get("available_server_boosts", 0)
-    if available_boosts <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No Server Boosts available in your inventory."
-        )
-        
     try:
         server_obj_id = ObjectId(request.server_id)
     except Exception:
@@ -430,28 +422,46 @@ async def apply_server_boost(
             detail="Server not found"
         )
         
-    # Deduct boost from user
+    # Deduct boost from user atomically
     users = get_users_collection()
-    await users.update_one(
-        {"_id": ObjectId(current_user["_id"])},
+    result = await users.update_one(
+        {
+            "_id": ObjectId(current_user["_id"]),
+            "available_server_boosts": {"$gt": 0}
+        },
         {"$inc": {"available_server_boosts": -1}}
     )
     
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No Server Boosts available in your inventory."
+        )
+    
     # Increment server boost_level
     from pymongo import ReturnDocument
-    updated_server = await servers.find_one_and_update(
-        {"_id": server_obj_id},
-        {"$inc": {"boost_level": 1}, "$set": {"updated_at": datetime.utcnow()}},
-        return_document=ReturnDocument.AFTER
-    )
+    try:
+        updated_server = await servers.find_one_and_update(
+            {"_id": server_obj_id},
+            {"$inc": {"boost_level": 1}, "$set": {"updated_at": datetime.utcnow()}},
+            return_document=ReturnDocument.AFTER
+        )
+    except Exception as e:
+        # Refund on failure
+        await users.update_one(
+            {"_id": ObjectId(current_user["_id"])},
+            {"$inc": {"available_server_boosts": 1}}
+        )
+        raise HTTPException(status_code=500, detail="Failed to apply boost, refunded.")
     
-    # Check if motor returned dictionary or object (depending on version, motor acts like pymongo)
-    # Actually Motor parses return_document=True/ReturnDocument.AFTER correctly depending on motor version.
     # To be safe:
     new_boost_level = updated_server.get("boost_level", server.get("boost_level", 0) + 1) if updated_server else server.get("boost_level", 0) + 1
     
+    # Since we decremented atomically, calculate new count (approximate for display)
+    new_available_boosts = max(0, current_user.get("available_server_boosts", 0) - 1)
+    
     return {
         "message": f"Server Boost Applied! {server['name']} is now Level {new_boost_level}.",
-        "available_server_boosts": available_boosts - 1,
+        "available_server_boosts": new_available_boosts,
         "boost_level": new_boost_level
     }

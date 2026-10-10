@@ -17,13 +17,79 @@ from app.database import get_users_collection
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
+import time
+from collections import defaultdict
+
+# ---------------------------------------------------------------------------
+# In-memory sliding-window rate limiter for /auth/register
+#
+# Limit: 5 requests per 10 minutes per source IP.
+# NOTE: This is **per-worker** memory. With Gunicorn/uvicorn multi-worker
+# deployments (e.g. Azure App Service) each worker has its own counter,
+# meaning up to (N_WORKERS × 5) requests per window can slip through.
+# For a single-worker ASGI deployment this is perfectly accurate.
+# A distributed counter (e.g. Redis) would be needed for strict enforcement
+# across all workers. This is documented here for operational awareness.
+#
+# Azure App Service proxy: The App Service sits behind an HTTP proxy that
+# appends the original client IP to X-Forwarded-For. We prefer that header
+# over request.client.host (which would be the proxy's IP). We take only
+# the FIRST entry in X-Forwarded-For to avoid IP-spoofing via crafted headers
+# (the proxy always appends after any client-supplied values).
+# ---------------------------------------------------------------------------
+_register_rate_limits: dict[str, list[float]] = defaultdict(list)
+REGISTER_RATE_LIMIT_MAX = 5        # max requests per window
+REGISTER_RATE_LIMIT_WINDOW_SEC = 600  # 10 minutes
+
+
+def _get_client_ip(http_request: Request) -> str:
+    """
+    Extract the real client IP.
+    Prefers the first value in X-Forwarded-For (set by Azure App Service /
+    any reverse proxy) over direct socket address so the rate limiter counts
+    against the real user, not the proxy.
+    """
+    forwarded_for = http_request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        # X-Forwarded-For: <client>, <proxy1>, <proxy2>
+        return forwarded_for.split(",")[0].strip()
+    if http_request.client:
+        return http_request.client.host
+    return "unknown"
+
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-async def register(request: RegisterRequest):
+async def register(request_body: RegisterRequest, http_request: Request):
     """
     Register a new user account.
     Username must be unique and cannot be changed after registration.
+    Rate limited to 5 requests per 10 minutes per source IP.
     """
+    # --- Rate Limiting ---
+    client_ip = _get_client_ip(http_request)
+    now = time.time()
+
+    # Purge timestamps outside the window
+    _register_rate_limits[client_ip] = [
+        ts for ts in _register_rate_limits[client_ip]
+        if now - ts < REGISTER_RATE_LIMIT_WINDOW_SEC
+    ]
+
+    if len(_register_rate_limits[client_ip]) >= REGISTER_RATE_LIMIT_MAX:
+        retry_after = int(
+            REGISTER_RATE_LIMIT_WINDOW_SEC - (now - _register_rate_limits[client_ip][0])
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many registration attempts from this IP. Please try again later.",
+            headers={"Retry-After": str(max(retry_after, 1))}
+        )
+
+    _register_rate_limits[client_ip].append(now)
+    # ---------------------
+    
     try:
         from app.services.email_service import generate_otp, send_otp_email
         from datetime import datetime, timedelta
@@ -31,9 +97,9 @@ async def register(request: RegisterRequest):
         import string
         
         user_data = UserCreate(
-            username=request.username,
-            email=request.email,
-            password=request.password
+            username=request_body.username,
+            email=request_body.email,
+            password=request_body.password
         )
         user = await AuthService.create_user(user_data)
         
@@ -49,15 +115,12 @@ async def register(request: RegisterRequest):
         }
         
         # Handle referral tracking if invite_code was provided
-        if request.invite_code:
-            referrer = await users_col.find_one({"invite_code": request.invite_code})
+        # TODO: Rate limiting MUST be implemented here to prevent script-driven mass registrations
+        if request_body.invite_code:
+            referrer = await users_col.find_one({"invite_code": request_body.invite_code})
             if referrer:
                 update_fields["referred_by"] = str(referrer["_id"])
-                # Increment referrer's total_invites_successful
-                await users_col.update_one(
-                    {"_id": referrer["_id"]},
-                    {"$inc": {"total_invites_successful": 1}}
-                )
+                update_fields["referral_credited"] = False
         
         # Generate and save email verification OTP
         otp = await generate_otp()
@@ -73,13 +136,13 @@ async def register(request: RegisterRequest):
         
         # Send verification email
         try:
-            await send_otp_email(request.email, otp, context="registration")
+            await send_otp_email(request_body.email, otp, context="registration")
         except Exception as email_err:
             from bson import ObjectId
             # Rollback: delete the created user
             await users_col.delete_one({"_id": ObjectId(user["_id"])})
             import logging
-            logging.error(f"Failed to send email to {request.email}: {str(email_err)}")
+            logging.error(f"Failed to send email to {request_body.email}: {str(email_err)}")
             raise ValueError("Failed to send verification email. Please try again.")
             
         return RegisterResponse(
@@ -159,24 +222,39 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     from app.database import get_users_collection
     users_col = get_users_collection()
     now = datetime.utcnow()
-    last_login = user.get("login_streak_last_date")
-    current_streak = user.get("login_streak_current", 0)
+    today_start = datetime(now.year, now.month, now.day)
+    yesterday_start = today_start - timedelta(days=1)
     
-    if last_login:
-        delta = (now.date() - last_login.date()).days
-        if delta == 1:
-            new_streak = current_streak + 1
-        elif delta == 0:
-            new_streak = current_streak
-        else:
-            new_streak = 1
-    else:
-        new_streak = 1
-    
-    await users_col.update_one(
-        {"_id": user["_id"]},
-        {"$set": {"login_streak_current": new_streak, "login_streak_last_date": now}}
+    # 1. Try to increment streak if last login was yesterday
+    result = await users_col.update_one(
+        {
+            "_id": user["_id"],
+            "login_streak_last_date": {"$gte": yesterday_start, "$lt": today_start}
+        },
+        {
+            "$inc": {"login_streak_current": 1},
+            "$set": {"login_streak_last_date": now}
+        }
     )
+    
+    # 2. If it wasn't yesterday, it's either today (no change needed) or earlier (reset to 1)
+    if result.modified_count == 0:
+        await users_col.update_one(
+            {
+                "_id": user["_id"],
+                "$or": [
+                    {"login_streak_last_date": {"$lt": yesterday_start}},
+                    {"login_streak_last_date": {"$exists": False}},
+                    {"login_streak_last_date": None}
+                ]
+            },
+            {
+                "$set": {
+                    "login_streak_current": 1,
+                    "login_streak_last_date": now
+                }
+            }
+        )
     
     # --- Backfill invite code for existing users ---
     if not user.get("invite_code"):
@@ -306,6 +384,23 @@ async def verify_email(request: VerifyEmailRequest):
         "email_verification_token": None,
         "email_verification_expires": None
     })
+    
+    # Process referral credit securely
+    if user.get("referred_by") and not user.get("referral_credited"):
+        from app.database import get_users_collection
+        from bson import ObjectId
+        users_col = get_users_collection()
+        
+        # Atomically check and mark as credited
+        result = await users_col.update_one(
+            {"_id": ObjectId(user["_id"]), "referral_credited": {"$ne": True}},
+            {"$set": {"referral_credited": True}}
+        )
+        if result.modified_count > 0:
+            await users_col.update_one(
+                {"_id": ObjectId(user["referred_by"])},
+                {"$inc": {"total_invites_successful": 1}}
+            )
     
     return {"message": "Email verified successfully. You can now log in."}
 

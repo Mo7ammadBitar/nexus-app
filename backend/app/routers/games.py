@@ -533,9 +533,24 @@ async def record_game_result(
     Only participants (challenger or opponent) can report the result.
     Result is stored from the perspective of the reporting user.
     Emits game:result so both clients can show a result screen.
+
+    SECURITY: Shard wagering is DISABLED. This endpoint accepts the result
+    from one participant with zero server-side game-state validation.
+    Any aether_shards transfer here would allow a malicious client to
+    self-report a "win" and steal shards. A server-authoritative game
+    engine is required before shard payouts can be enabled.
     """
     doc = await _fetch_challenge_doc(message_id)
     cd = doc.get("challenge_data", {})
+
+    # Reject any shard/wager payout attempt
+    if cd.get("wager_shards") or cd.get("wager_amount"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Shard wagering is disabled. Game results are client-reported "
+                   "and cannot be trusted for currency transfers. A server-authoritative "
+                   "game engine is required before shard payouts can be enabled.",
+        )
 
     current_user_id = normalize_id(current_user["_id"])
     challenger_id = normalize_id(doc["sender_id"])

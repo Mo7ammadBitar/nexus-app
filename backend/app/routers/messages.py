@@ -216,20 +216,24 @@ async def send_message(
             from datetime import timedelta
             from app.database import get_members_collection, get_database
             
+            from pymongo import ReturnDocument
             members_col = get_members_collection()
-            new_strikes = member.get("strikes", 0) + 1
             
-            update_data = {"$set": {"strikes": new_strikes}}
+            updated_member = await members_col.find_one_and_update(
+                {"server_id": channel["server_id"], "user_id": current_user["_id"]},
+                {"$inc": {"strikes": 1}},
+                return_document=ReturnDocument.AFTER
+            )
             
+            new_strikes = updated_member.get("strikes", 1) if updated_member else 1
             new_timeout_until = None
+            
             if new_strikes >= 2:
                 new_timeout_until = datetime.utcnow() + timedelta(minutes=10)
-                update_data["$set"]["timeout_until"] = new_timeout_until
-                
-            await members_col.update_one(
-                {"server_id": channel["server_id"], "user_id": current_user["_id"]},
-                update_data
-            )
+                await members_col.update_one(
+                    {"server_id": channel["server_id"], "user_id": current_user["_id"]},
+                    {"$set": {"timeout_until": new_timeout_until}}
+                )
             
             # Audit log
             db = get_database()
