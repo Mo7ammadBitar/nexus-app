@@ -275,8 +275,10 @@ async def send_message(
         # Check file type
         ext = file.filename.split(".")[-1].lower() if file.filename else ""
         allowed_extensions = ["docx", "pdf", "pptx", "jpg", "jpeg", "png", "gif", "txt", "zip", "rar"]
+        
+        base_content_type = file.content_type.split(";")[0].strip() if file.content_type else ""
 
-        if file.content_type not in ALLOWED_FILE_TYPES and ext not in allowed_extensions:
+        if base_content_type not in ALLOWED_FILE_TYPES and ext not in allowed_extensions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"File type not allowed: {file.content_type} ({ext})"
@@ -294,16 +296,16 @@ async def send_message(
         
         # Determine file type
         # Check if this is a voice message
-        if message_type == "voice" and (file.content_type in ALLOWED_AUDIO_TYPES or ext in ["mp3", "wav", "ogg", "m4a", "webm", "aac"]):
+        if message_type == "voice" and (base_content_type in ALLOWED_AUDIO_TYPES or ext in ["mp3", "wav", "ogg", "m4a", "webm", "aac"]):
             file_type = "voice"
             subdir = "voice"
-        elif file.content_type in ALLOWED_IMAGE_TYPES or ext in ["jpg", "jpeg", "png", "gif", "webp"]:
+        elif base_content_type in ALLOWED_IMAGE_TYPES or ext in ["jpg", "jpeg", "png", "gif", "webp"]:
             file_type = "image"
             subdir = "images"
-        elif file.content_type in ALLOWED_AUDIO_TYPES or ext in ["mp3", "wav", "ogg", "m4a"]:
+        elif base_content_type in ALLOWED_AUDIO_TYPES or ext in ["mp3", "wav", "ogg", "m4a"]:
             file_type = "audio"
             subdir = "audio"
-        elif file.content_type in ALLOWED_ARCHIVE_TYPES or ext in ["zip", "rar"]:
+        elif base_content_type in ALLOWED_ARCHIVE_TYPES or ext in ["zip", "rar"]:
             file_type = "archive"
             subdir = "archives"
         else:

@@ -112,12 +112,13 @@ async def send_message(
             "docx", "pdf", "pptx", "jpg", "jpeg", "png", "gif", "txt", "zip", "rar",
             "mp3", "wav", "ogg", "m4a", "webm", "mp4", "aac" 
         ]
+        base_content_type = file.content_type.split(";")[0].strip() if file.content_type else ""
         
-        is_valid_type = file.content_type in ALLOWED_FILE_TYPES
+        is_valid_type = base_content_type in ALLOWED_FILE_TYPES
         if not is_valid_type:
             # Try partial match
             for allowed in ALLOWED_FILE_TYPES:
-                if file.content_type.startswith(allowed):
+                if base_content_type.startswith(allowed):
                     is_valid_type = True
                     break
         
@@ -138,16 +139,16 @@ async def send_message(
             )
         
         # Determine file type
-        if message_type == "voice" and (file.content_type in ALLOWED_AUDIO_TYPES or ext in ["mp3", "wav", "ogg", "m4a", "webm", "aac"]):
+        if message_type == "voice" and (base_content_type in ALLOWED_AUDIO_TYPES or ext in ["mp3", "wav", "ogg", "m4a", "webm", "aac"]):
             file_type = "voice"
             subdir = "voice"
-        elif file.content_type in ALLOWED_IMAGE_TYPES or ext in ["jpg", "jpeg", "png", "gif", "webp"]:
+        elif base_content_type in ALLOWED_IMAGE_TYPES or ext in ["jpg", "jpeg", "png", "gif", "webp"]:
             file_type = "image"
             subdir = "images"
-        elif file.content_type in ALLOWED_AUDIO_TYPES or ext in ["mp3", "wav", "ogg", "m4a"]:
+        elif base_content_type in ALLOWED_AUDIO_TYPES or ext in ["mp3", "wav", "ogg", "m4a"]:
             file_type = "audio"
             subdir = "audio"
-        elif file.content_type in ALLOWED_ARCHIVE_TYPES or ext in ["zip", "rar"]:
+        elif base_content_type in ALLOWED_ARCHIVE_TYPES or ext in ["zip", "rar"]:
             file_type = "archive"
             subdir = "archives"
         else:
