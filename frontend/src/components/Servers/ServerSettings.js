@@ -7,7 +7,7 @@ import { serversAPI } from '../../services/api';import SentinelDashboard from '.
 
 const ServerSettings = ({ onClose }) => {
     const { t } = useTranslation();
-    const { currentServer, fetchServers, selectServer } = useServerStore();
+    const { currentServer, fetchServers, selectServer, updateServer } = useServerStore();
     const [copied, setCopied] = useState(false);
     const [editingName, setEditingName] = useState(false);
     const [newName, setNewName] = useState(currentServer?.name || '');
@@ -308,8 +308,13 @@ const ServerSettings = ({ onClose }) => {
                     serverId={currentServer._id} 
                     currentSettings={currentServer.sentinel_settings || {}}
                     onClose={() => setShowSentinel(false)} 
-                    onSettingsUpdated={(newSettings) => {
-                        // Optimistically update local store/settings if needed
+                    onSettingsUpdated={(newSettings, updatedServer) => {
+                        if (updateServer && currentServer?._id) {
+                            updateServer(currentServer._id, {
+                                sentinel_settings: newSettings,
+                                ...(updatedServer ? updatedServer : {})
+                            });
+                        }
                     }}
                 />
             )}

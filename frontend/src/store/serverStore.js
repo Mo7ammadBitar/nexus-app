@@ -385,6 +385,59 @@ export const useServerStore = create((set, get) => ({
         }
     },
 
+    // Update server data (e.g., settings, name, sentinel_settings)
+    updateServer: (serverId, updatedData) => {
+        set(state => {
+            const updatedServers = state.servers.map(s =>
+                s._id === serverId ? { ...s, ...updatedData } : s
+            );
+            const updatedCurrentServer = state.currentServer?._id === serverId
+                ? { ...state.currentServer, ...updatedData }
+                : state.currentServer;
+            return {
+                servers: updatedServers,
+                currentServer: updatedCurrentServer,
+            };
+        });
+    },
+
+    // Update reactions for a message
+    updateMessageReactions: (messageId, reactions) => {
+        set(state => ({
+            messages: state.messages.map(m =>
+                m._id === messageId ? { ...m, reactions: reactions } : m
+            ),
+            pinnedMessages: state.pinnedMessages.map(m =>
+                m._id === messageId ? { ...m, reactions: reactions } : m
+            )
+        }));
+    },
+
+    // Setup socket listeners for real-time channel updates
+    setupSocketListeners: (socket) => {
+        if (!socket) return;
+
+        socket.off('message_reaction_updated');
+        socket.on('message_reaction_updated', (data) => {
+            if (data?.message_id && data?.reactions !== undefined) {
+                const currentChan = get().currentChannel;
+                if (!data.channel_id || !currentChan || data.channel_id === currentChan._id) {
+                    get().updateMessage(data.message_id, { reactions: data.reactions });
+                }
+            }
+        });
+
+        socket.off('message_deleted');
+        socket.on('message_deleted', (data) => {
+            if (data?.message_id) {
+                const currentChan = get().currentChannel;
+                if (!data.channel_id || !currentChan || data.channel_id === currentChan._id) {
+                    get().removeMessage(data.message_id);
+                }
+            }
+        });
+    },
+
     // Clear current server
     clearServer: () => {
         set({

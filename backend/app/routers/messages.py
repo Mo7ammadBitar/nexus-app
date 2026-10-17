@@ -491,10 +491,18 @@ async def add_reaction(
     result = await MessageService.add_reaction(message_id, current_user["_id"], emoji)
     
     # Broadcast reaction update
-    room = f"channel_{message['channel_id']}"
+    channel_id = str(message["channel_id"])
+    room = f"channel_{channel_id}"
+    updated_reactions = result.get("reactions", {}) if result else {}
+    await sio.emit("message_reaction_updated", {
+        "message_id": message_id,
+        "reactions": updated_reactions,
+        "channel_id": channel_id
+    }, room=room, namespace="/chat")
     await sio.emit("message_updated", {
         "message_id": message_id,
-        "reactions": result.get("reactions", {})
+        "reactions": updated_reactions,
+        "channel_id": channel_id
     }, room=room, namespace="/chat")
 
     # Quest: increment total_reactions_given
@@ -507,7 +515,7 @@ async def add_reaction(
     except Exception:
         pass  # Non-critical
 
-    return {"message": "Reaction added", "reactions": result.get("reactions", {})}
+    return {"message": "Reaction added", "reactions": updated_reactions}
 
 
 @router.delete("/{message_id}/react")
@@ -541,13 +549,21 @@ async def remove_reaction(
     result = await MessageService.remove_reaction(message_id, current_user["_id"], emoji)
     
     # Broadcast reaction update
-    room = f"channel_{message['channel_id']}"
+    channel_id = str(message["channel_id"])
+    room = f"channel_{channel_id}"
+    updated_reactions = result.get("reactions", {}) if result else {}
+    await sio.emit("message_reaction_updated", {
+        "message_id": message_id,
+        "reactions": updated_reactions,
+        "channel_id": channel_id
+    }, room=room, namespace="/chat")
     await sio.emit("message_updated", {
         "message_id": message_id,
-        "reactions": result.get("reactions", {}) if result else {}
+        "reactions": updated_reactions,
+        "channel_id": channel_id
     }, room=room, namespace="/chat")
     
-    return {"message": "Reaction removed", "reactions": result.get("reactions", {}) if result else {}}
+    return {"message": "Reaction removed", "reactions": updated_reactions}
 
 
 # PIN/UNPIN ENDPOINTS - Must be defined before /{channel_id}/{message_id} routes

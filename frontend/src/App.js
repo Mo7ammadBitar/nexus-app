@@ -78,6 +78,7 @@ function App() {
 
                 // Setup store listeners
                 setupSocketListeners(socket);
+                useServerStore.getState().setupSocketListeners(socket);
                 if (setupVoiceSocketListeners) {
                     setupVoiceSocketListeners(socket);
                 }
@@ -111,6 +112,8 @@ function App() {
                 if (socket) {
                     socket.off('presence_update');
                     socket.off('dm_new_message');
+                    socket.off('message_reaction_updated');
+                    socket.off('message_deleted');
                 }
             };
         }

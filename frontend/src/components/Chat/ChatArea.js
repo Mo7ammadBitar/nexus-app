@@ -383,6 +383,28 @@ const ChatArea = () => {
                 }
             });
 
+            // Reaction Listener
+            socket.off('message_reaction_updated');
+            socket.on('message_reaction_updated', (data) => {
+                console.log("👍 Received reaction update via Socket:", data);
+                if (data?.message_id && data?.reactions !== undefined) {
+                    if (!data.channel_id || data.channel_id === currentChannel._id) {
+                        updateMessage(data.message_id, { reactions: data.reactions });
+                    }
+                }
+            });
+
+            // Message Deletion Listener
+            socket.off('message_deleted');
+            socket.on('message_deleted', (data) => {
+                console.log("🗑️ Received message deleted via Socket:", data);
+                if (data?.message_id) {
+                    if (!data.channel_id || data.channel_id === currentChannel._id) {
+                        removeMessage(data.message_id);
+                    }
+                }
+            });
+
             // Typing Listeners
             socket.off('user_typing');
             socket.on('user_typing', (data) => {
@@ -411,12 +433,14 @@ const ChatArea = () => {
             }
             if (socket) {
                 socket.off('new_message');
+                socket.off('message_reaction_updated');
+                socket.off('message_deleted');
                 socket.off('user_typing');
                 socket.off('user_stopped_typing');
             }
             setTypingUsers([]);
         };
-    }, [currentChannel, addMessage, user?._id]);
+    }, [currentChannel, addMessage, updateMessage, removeMessage, user?._id]);
 
     const handleSend = async () => {
         if ((!messageText.trim() && selectedFiles.length === 0) || !currentChannel || isSending || isMuted || isChannelRestricted) return;

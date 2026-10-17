@@ -157,6 +157,8 @@ class MessageService:
                     {"_id": ObjectId(message_id)},
                     {"$unset": {f"reactions.{emoji}": ""}}
                 )
+                if "reactions" in result and emoji in result["reactions"]:
+                    del result["reactions"][emoji]
         return result
 
     @staticmethod

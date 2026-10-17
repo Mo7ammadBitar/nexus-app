@@ -7,6 +7,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { serversAPI } from '../../services/api';
 import api from '../../services/api';
+import { useServerStore } from '../../store/serverStore';
 
 const SentinelDashboard = ({ serverId, currentSettings, onClose, onSettingsUpdated }) => {
     const { t } = useTranslation();
@@ -19,6 +20,16 @@ const SentinelDashboard = ({ serverId, currentSettings, onClose, onSettingsUpdat
         ai_strictness: false,
         ...currentSettings
     });
+
+    // Synchronize settings when currentSettings prop updates
+    useEffect(() => {
+        if (currentSettings) {
+            setSettings(prev => ({
+                ...prev,
+                ...currentSettings
+            }));
+        }
+    }, [currentSettings]);
     
     // Threat List
     const [members, setMembers] = useState([]);
@@ -66,9 +77,21 @@ const SentinelDashboard = ({ serverId, currentSettings, onClose, onSettingsUpdat
     const handleSaveSettings = async () => {
         setSaving(true);
         try {
-            await api.put(`/servers/${serverId}/sentinel`, settings);
+            const res = await api.put(`/servers/${serverId}/sentinel`, settings);
+            const savedSettings = res.data?.server?.sentinel_settings || settings;
+            setSettings(prev => ({ ...prev, ...savedSettings }));
+
+            // Update serverStore directly with fresh server response
+            const updateServer = useServerStore.getState().updateServer;
+            if (updateServer) {
+                updateServer(serverId, {
+                    sentinel_settings: savedSettings,
+                    ...(res.data?.server || {})
+                });
+            }
+
             if (onSettingsUpdated) {
-                onSettingsUpdated(settings);
+                onSettingsUpdated(savedSettings, res.data?.server);
             }
         } catch (err) {
             console.error("Failed to save sentinel settings", err);
