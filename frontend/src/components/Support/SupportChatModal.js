@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native-web';
 import { supportAPI } from '../../services/api';
+import { connectChatSocket } from '../../services/socket';
 import { X, Send, AlertCircle, RefreshCcw } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 const SupportChatModal = ({ isOpen, onClose, ticket, onTicketUpdated }) => {
     const { user } = useAuthStore();
+    const [currentTicket, setCurrentTicket] = useState(ticket);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
@@ -18,12 +20,55 @@ const SupportChatModal = ({ isOpen, onClose, ticket, onTicketUpdated }) => {
     const scrollRef = useRef(null);
 
     useEffect(() => {
+        setCurrentTicket(ticket);
+    }, [ticket]);
+
+    useEffect(() => {
         if (isOpen && ticket) {
             loadMessages();
             setShowReopenInput(false);
             setReopenReason('');
         }
-    }, [isOpen, ticket]);
+    }, [isOpen, ticket?._id]);
+
+    useEffect(() => {
+        if (!isOpen || !ticket?._id) return;
+
+        const socket = connectChatSocket();
+        if (!socket) return;
+
+        // Named handler: append to open ticket if ticket_id matches (dedupe by _id)
+        const handleTicketMessage = (data) => {
+            if (data?.ticket_id === ticket._id && data?.message) {
+                setMessages(prev => {
+                    const incomingId = data.message._id || data.message.id;
+                    if (prev.some(m => (m._id || m.id) === incomingId)) {
+                        return prev;
+                    }
+                    return [...prev, data.message];
+                });
+            }
+        };
+
+        // Named handler: update ticket status in real-time
+        const handleTicketStatusUpdated = (data) => {
+            if (data?.ticket_id === ticket._id && data?.status) {
+                setCurrentTicket(prev => prev ? { ...prev, status: data.status, updated_at: data.updated_at } : prev);
+                if (onTicketUpdated) onTicketUpdated();
+            }
+        };
+
+        socket.off('ticket_message', handleTicketMessage);
+        socket.on('ticket_message', handleTicketMessage);
+
+        socket.off('ticket_status_updated', handleTicketStatusUpdated);
+        socket.on('ticket_status_updated', handleTicketStatusUpdated);
+
+        return () => {
+            socket.off('ticket_message', handleTicketMessage);
+            socket.off('ticket_status_updated', handleTicketStatusUpdated);
+        };
+    }, [isOpen, ticket?._id, onTicketUpdated]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -35,7 +80,7 @@ const SupportChatModal = ({ isOpen, onClose, ticket, onTicketUpdated }) => {
         setLoading(true);
         try {
             const res = await supportAPI.getTicketMessages(ticket._id);
-            setMessages(res.data);
+            setMessages(res.data || []);
         } catch (error) {
             console.error('Failed to load ticket messages:', error);
         } finally {
@@ -48,7 +93,14 @@ const SupportChatModal = ({ isOpen, onClose, ticket, onTicketUpdated }) => {
         setIsSubmitting(true);
         try {
             const res = await supportAPI.sendMessage(ticket._id, newMessage);
-            setMessages(prev => [...prev, res.data]);
+            // Dedupe by _id so sender doesn't see duplicates (REST response + socket echo)
+            setMessages(prev => {
+                const resId = res.data?._id || res.data?.id;
+                if (prev.some(m => (m._id || m.id) === resId)) {
+                    return prev;
+                }
+                return [...prev, res.data];
+            });
             setNewMessage('');
         } catch (error) {
             console.error('Failed to send message:', error);
@@ -62,6 +114,7 @@ const SupportChatModal = ({ isOpen, onClose, ticket, onTicketUpdated }) => {
         setIsSubmitting(true);
         try {
             const res = await supportAPI.requestReopen(ticket._id, reopenReason);
+            setCurrentTicket(res.data);
             if (onTicketUpdated) onTicketUpdated(res.data);
             setShowReopenInput(false);
         } catch (error) {
@@ -73,8 +126,9 @@ const SupportChatModal = ({ isOpen, onClose, ticket, onTicketUpdated }) => {
 
     if (!isOpen || !ticket) return null;
 
-    const isClosed = ticket.status === 'closed';
-    const isReopenRequested = ticket.status === 'reopen_requested';
+    const activeTicket = currentTicket || ticket;
+    const isClosed = activeTicket.status === 'closed';
+    const isReopenRequested = activeTicket.status === 'reopen_requested';
 
     return (
         <View style={styles.overlay} onClick={onClose}>
@@ -82,9 +136,9 @@ const SupportChatModal = ({ isOpen, onClose, ticket, onTicketUpdated }) => {
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
-                        <Text style={styles.title}>Ticket: {ticket.subject}</Text>
+                        <Text style={styles.title}>Ticket: {activeTicket.subject}</Text>
                         <View style={[styles.statusBadge, isClosed ? styles.statusClosed : (isReopenRequested ? styles.statusRequested : styles.statusOpen)]}>
-                            <Text style={styles.statusText}>{ticket.status.replace('_', ' ').toUpperCase()}</Text>
+                            <Text style={styles.statusText}>{activeTicket.status.replace('_', ' ').toUpperCase()}</Text>
                         </View>
                     </View>
                     <TouchableOpacity onPress={onClose} style={styles.closeBtn}>

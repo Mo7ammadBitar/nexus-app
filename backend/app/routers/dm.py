@@ -382,6 +382,22 @@ async def add_reaction(
     except Exception:
         pass  # Non-critical
     
+    # Emit dm_reaction_updated to both participants
+    try:
+        from app.socket_instance import sio
+        reaction_payload = {
+            "message_id": str(message_id),
+            "reactions": result.get("reactions", {})
+        }
+        sender_id = result.get("sender_id", "")
+        receiver_id = result.get("receiver_id", "")
+        if sender_id:
+            await sio.emit("dm_reaction_updated", reaction_payload, room=str(sender_id), namespace="/chat")
+        if receiver_id:
+            await sio.emit("dm_reaction_updated", reaction_payload, room=str(receiver_id), namespace="/chat")
+    except Exception as e:
+        print(f"DM Reaction Socket Emit Error: {e}")
+
     return {"message": "Reaction added", "reactions": result.get("reactions", {})}
 
 
@@ -393,6 +409,24 @@ async def remove_reaction(
 ):
     """Remove a reaction from a DM message."""
     result = await DirectMessageService.remove_reaction(message_id, current_user["_id"], emoji)
+    
+    # Emit dm_reaction_updated to both participants
+    if result:
+        try:
+            from app.socket_instance import sio
+            reaction_payload = {
+                "message_id": str(message_id),
+                "reactions": result.get("reactions", {})
+            }
+            sender_id = result.get("sender_id", "")
+            receiver_id = result.get("receiver_id", "")
+            if sender_id:
+                await sio.emit("dm_reaction_updated", reaction_payload, room=str(sender_id), namespace="/chat")
+            if receiver_id:
+                await sio.emit("dm_reaction_updated", reaction_payload, room=str(receiver_id), namespace="/chat")
+        except Exception as e:
+            print(f"DM Reaction Remove Socket Emit Error: {e}")
+
     return {"message": "Reaction removed", "reactions": result.get("reactions", {}) if result else {}}
 
 

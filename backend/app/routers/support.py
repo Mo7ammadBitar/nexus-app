@@ -59,6 +59,24 @@ async def create_ticket(
         
         # Cast inner _id back to string for Pydantic response validation
         ticket_dict["_id"] = str(ticket_dict["_id"])
+
+        # Real-time emit initial message
+        try:
+            from app.socket_instance import sio
+            init_socket_msg = {
+                "_id": str(msg_dict["_id"]),
+                "ticket_id": str(ticket_dict["_id"]),
+                "sender_id": str(msg_dict["sender_id"]),
+                "message": msg_dict["message"],
+                "timestamp": msg_dict["timestamp"].isoformat() if isinstance(msg_dict["timestamp"], datetime) else str(msg_dict["timestamp"])
+            }
+            ticket_user_id = str(ticket_dict["user_id"])
+            await sio.emit("ticket_message", {"ticket_id": str(ticket_dict["_id"]), "message": init_socket_msg}, room=f"user_{ticket_user_id}", namespace="/chat")
+            await sio.emit("ticket_message", {"ticket_id": str(ticket_dict["_id"]), "message": init_socket_msg}, room=ticket_user_id, namespace="/chat")
+            await sio.emit("ticket_message", {"ticket_id": str(ticket_dict["_id"]), "message": init_socket_msg}, room="admins", namespace="/chat")
+        except Exception as e:
+            print(f"Create Ticket Socket Error: {e}")
+
         return ticket_dict
     except Exception as e:
         import logging
@@ -160,6 +178,24 @@ async def send_ticket_message(
         )
         
         msg_dict["_id"] = str(msg_dict["_id"])
+
+        # Real-time emit: ticket_message to user_{ticket.user_id} and room "admins"
+        try:
+            from app.socket_instance import sio
+            socket_msg = {
+                "_id": str(msg_dict["_id"]),
+                "ticket_id": str(ticket_id),
+                "sender_id": str(msg_dict["sender_id"]),
+                "message": msg_dict["message"],
+                "timestamp": msg_dict["timestamp"].isoformat() if isinstance(msg_dict["timestamp"], datetime) else str(msg_dict["timestamp"])
+            }
+            ticket_user_id = str(ticket["user_id"])
+            await sio.emit("ticket_message", {"ticket_id": str(ticket_id), "message": socket_msg}, room=f"user_{ticket_user_id}", namespace="/chat")
+            await sio.emit("ticket_message", {"ticket_id": str(ticket_id), "message": socket_msg}, room=ticket_user_id, namespace="/chat")
+            await sio.emit("ticket_message", {"ticket_id": str(ticket_id), "message": socket_msg}, room="admins", namespace="/chat")
+        except Exception as e:
+            print(f"Ticket Message Socket Error: {e}")
+
         return msg_dict
     except HTTPException:
         raise
@@ -188,6 +224,22 @@ async def close_ticket(
             raise HTTPException(status_code=404, detail="Ticket not found")
             
         result["_id"] = str(result["_id"])
+
+        # Real-time emit: ticket_status_updated to user_{ticket.user_id} and room "admins"
+        try:
+            from app.socket_instance import sio
+            status_payload = {
+                "ticket_id": str(ticket_id),
+                "status": "closed",
+                "updated_at": result["updated_at"].isoformat() if isinstance(result.get("updated_at"), datetime) else str(result.get("updated_at"))
+            }
+            ticket_user_id = str(result["user_id"])
+            await sio.emit("ticket_status_updated", status_payload, room=f"user_{ticket_user_id}", namespace="/chat")
+            await sio.emit("ticket_status_updated", status_payload, room=ticket_user_id, namespace="/chat")
+            await sio.emit("ticket_status_updated", status_payload, room="admins", namespace="/chat")
+        except Exception as e:
+            print(f"Close Ticket Socket Error: {e}")
+
         return result
     except HTTPException:
         raise
@@ -224,6 +276,23 @@ async def request_reopen(
             return_document=True
         )
         result["_id"] = str(result["_id"])
+
+        # Real-time emit: ticket_status_updated to user_{ticket.user_id} and room "admins"
+        try:
+            from app.socket_instance import sio
+            status_payload = {
+                "ticket_id": str(ticket_id),
+                "status": "reopen_requested",
+                "reopen_reason": request.reason,
+                "updated_at": result["updated_at"].isoformat() if isinstance(result.get("updated_at"), datetime) else str(result.get("updated_at"))
+            }
+            ticket_user_id = str(result["user_id"])
+            await sio.emit("ticket_status_updated", status_payload, room=f"user_{ticket_user_id}", namespace="/chat")
+            await sio.emit("ticket_status_updated", status_payload, room=ticket_user_id, namespace="/chat")
+            await sio.emit("ticket_status_updated", status_payload, room="admins", namespace="/chat")
+        except Exception as e:
+            print(f"Reopen Ticket Socket Error: {e}")
+
         return result
     except HTTPException:
         raise

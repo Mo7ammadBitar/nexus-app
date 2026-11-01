@@ -52,8 +52,9 @@ async def _verify_socket_token(auth: dict) -> dict:
         raise ConnectionRefusedError("Account is banned")
     
     username = user.get("username", payload.get("username", "Anonymous"))
+    role = user.get("role", "user")
     
-    return {"user_id": user_id, "username": username}
+    return {"user_id": user_id, "username": username, "role": role}
 
 
 class ChatNamespace(socketio.AsyncNamespace):
@@ -99,10 +100,12 @@ class ChatNamespace(socketio.AsyncNamespace):
         
         user_id = verified["user_id"]
         username = verified["username"]
+        role = verified.get("role", "user")
         
         self.connected_users[sid] = {
             "user_id": user_id,
             "username": username,
+            "role": role,
             "channels": []
         }
         
@@ -123,6 +126,12 @@ class ChatNamespace(socketio.AsyncNamespace):
         
         # Join user-specific room for DMs and notifications
         await self.enter_room(sid, f"user_{user_id}") 
+        await self.enter_room(sid, str(user_id))
+
+        # Join admins room if verified DB role is admin or super_admin
+        if role in ["admin", "super_admin"]:
+            await self.enter_room(sid, "admins")
+            print(f"🛡️ Chat: Admin {username} joined room 'admins' (sid: {sid})")
         
         print(f"🔌 Chat: {username} connected (sid: {sid}) [JWT verified]")
         return True
@@ -140,6 +149,7 @@ class ChatNamespace(socketio.AsyncNamespace):
         
         print(f"✅ Socket: User {user_id} joined room {user_id}")
         await self.enter_room(sid, str(user_id))
+        await self.enter_room(sid, f"user_{user_id}")
         return {"success": True}
     
     async def on_disconnect(self, sid, *args, **kwargs):

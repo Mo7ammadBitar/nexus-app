@@ -322,118 +322,29 @@ export const useFriendsStore = create((set, get) => ({
         }
     },
 
-    // Setup socket listeners for DMs
-    // Setup socket listeners for DMs and Friend Requests
+    // Setup socket listeners for DMs, Friend Requests, and Reactions
     setupSocketListeners: (socket) => {
         if (!socket) return;
 
         // 1. LISTENER FOR DIRECT MESSAGES
-        socket.off('dm_new_message'); // Remove existing to avoid duplicates
-        socket.on('dm_new_message', (newMessage) => {
-            console.log("📩 Received DM via Socket:", newMessage);
-            const state = get();
-            const currentUserId = JSON.parse(localStorage.getItem('user') || '{}')._id;
+        socket.off('dm_new_message', handleDMNewMessage);
+        socket.on('dm_new_message', handleDMNewMessage);
 
-            // Ignore own messages (sent from this client, synced back)
-            if (newMessage.sender_id === currentUserId) {
-                // Still add to current chat if applicable
-                const isCurrentChat = state.currentDMFriend &&
-                    (state.currentDMFriend._id === newMessage.receiver_id ||
-                        state.currentDMFriend.id === newMessage.receiver_id);
-                if (isCurrentChat) get().addDMMessage(newMessage);
-                return;
-            }
+        // 2. LISTENER FOR NEW FRIEND REQUESTS
+        socket.off('friend_request_received', handleFriendRequestReceived);
+        socket.on('friend_request_received', handleFriendRequestReceived);
 
-            // Check if this message belongs to the currently open chat
-            const isCurrentChat = state.currentDMFriend &&
-                (state.currentDMFriend._id === newMessage.sender_id ||
-                    state.currentDMFriend.id === newMessage.sender_id);
+        // 3. LISTENER FOR DM_UPDATED
+        socket.off('dm_updated', handleDMUpdated);
+        socket.on('dm_updated', handleDMUpdated);
 
-            const appHasFocus = document.hasFocus();
+        // 4. LISTENER FOR GAME START
+        socket.off('game:start', handleGameStart);
+        socket.on('game:start', handleGameStart);
 
-            if (isCurrentChat && appHasFocus) {
-                // Active chat + focused window → just add the message, no notification
-                get().addDMMessage(newMessage);
-            } else if (isCurrentChat && !appHasFocus) {
-                // Active chat but app is minimized/unfocused → add message + notify
-                get().addDMMessage(newMessage);
-                const senderName = newMessage.sender_name || newMessage.sender_username || 'Someone';
-                showNativeNotification(
-                    `New message from ${senderName}`,
-                    newMessage.content || '(attachment)',
-                    { skipFocusCheck: true }
-                );
-                // Brief badge flash (don't increment unread since chat is open)
-                updateBadgeCount(state.totalUnread > 0 ? state.totalUnread : 1);
-            } else {
-                // Different chat → increment unread + notify + badge
-                get().incrementUnread(newMessage.sender_id);
-                const newTotal = get().totalUnread;
-                const senderName = newMessage.sender_name || newMessage.sender_username || 'Someone';
-                showNativeNotification(
-                    `New message from ${senderName}`,
-                    newMessage.content || '(attachment)',
-                    { skipFocusCheck: true }
-                );
-                updateBadgeCount(newTotal);
-            }
-        });
-
-        // 2. LISTENER FOR NEW FRIEND REQUESTS (NEW!)
-        socket.off('friend_request_received'); // Remove existing to avoid duplicates
-        socket.on('friend_request_received', (data) => {
-            console.log("🤝 Real-time Friend Request Received:", data);
-
-            // Fetch the new pending request from API to update the list and trigger badge
-            get().fetchPendingRequests();
-
-            // Show a toast/system notification for the new friend request
-            showNativeNotification(
-                "New Friend Request",
-                "Someone wants to connect with you on Nexus!",
-                { skipFocusCheck: true }
-            );
-        });
-
-        // 3. LISTENER FOR DM_UPDATED — handles challenge card status changes
-        // When a challenge is accepted/declined/expired, the server emits dm_updated
-        // with the new challenge_data. We patch it into the dmMessages array.
-        socket.off('dm_updated');
-        socket.on('dm_updated', (updatedMsg) => {
-            console.log('📝 DM updated:', updatedMsg);
-            if (!updatedMsg._id) return;
-            set(state => ({
-                dmMessages: state.dmMessages.map(msg =>
-                    msg._id === updatedMsg._id ? { ...msg, ...updatedMsg } : msg
-                ),
-            }));
-        });
-
-        // 4. LISTENER FOR GAME START — Auto-navigate both players into the game
-        socket.off('game:start');
-        socket.on('game:start', (gameData) => {
-            console.log('🎮 Game starting!', gameData);
-            const currentUserId = JSON.parse(localStorage.getItem('user') || '{}')._id;
-            
-            // Determine this player's role
-            const isChallenger = gameData.challenger_id === currentUserId;
-            const opponentName = isChallenger ? gameData.opponent_name : gameData.challenger_name;
-            
-            // Import and set the UI store to navigate to the game
-            const { useUIStore } = require('./uiStore');
-            useUIStore.getState().setActiveMultiplayerGame({
-                gameRoomId: gameData.game_room_id,
-                gameType: gameData.game_type,
-                challengeId: gameData.challenge_id,
-                challengerId: gameData.challenger_id,
-                opponentId: gameData.opponent_id,
-                challengerName: gameData.challenger_name,
-                opponentName: gameData.opponent_name,
-                myRole: isChallenger ? 'challenger' : 'opponent',
-                myName: isChallenger ? gameData.challenger_name : gameData.opponent_name,
-                theirName: opponentName,
-            });
-        });
+        // 5. LISTENER FOR DM REACTIONS
+        socket.off('dm_reaction_updated', handleDMReactionUpdated);
+        socket.on('dm_reaction_updated', handleDMReactionUpdated);
     },
 
     // Increment unread count (for incoming messages via socket)
@@ -448,3 +359,104 @@ export const useFriendsStore = create((set, get) => ({
         });
     },
 }));
+
+// Stable named handlers for friendsStore socket events
+const handleDMNewMessage = (newMessage) => {
+    console.log("📩 Received DM via Socket:", newMessage);
+    const state = useFriendsStore.getState();
+    const currentUserId = JSON.parse(localStorage.getItem('user') || '{}')._id;
+
+    // Ignore own messages (sent from this client, synced back)
+    if (newMessage.sender_id === currentUserId) {
+        // Still add to current chat if applicable
+        const isCurrentChat = state.currentDMFriend &&
+            (state.currentDMFriend._id === newMessage.receiver_id ||
+                state.currentDMFriend.id === newMessage.receiver_id);
+        if (isCurrentChat) useFriendsStore.getState().addDMMessage(newMessage);
+        return;
+    }
+
+    // Check if this message belongs to the currently open chat
+    const isCurrentChat = state.currentDMFriend &&
+        (state.currentDMFriend._id === newMessage.sender_id ||
+            state.currentDMFriend.id === newMessage.sender_id);
+
+    const appHasFocus = document.hasFocus();
+
+    if (isCurrentChat && appHasFocus) {
+        // Active chat + focused window → just add the message, no notification
+        useFriendsStore.getState().addDMMessage(newMessage);
+    } else if (isCurrentChat && !appHasFocus) {
+        // Active chat but app is minimized/unfocused → add message + notify
+        useFriendsStore.getState().addDMMessage(newMessage);
+        const senderName = newMessage.sender_name || newMessage.sender_username || 'Someone';
+        showNativeNotification(
+            `New message from ${senderName}`,
+            newMessage.content || '(attachment)',
+            { skipFocusCheck: true }
+        );
+        // Brief badge flash (don't increment unread since chat is open)
+        updateBadgeCount(state.totalUnread > 0 ? state.totalUnread : 1);
+    } else {
+        // Different chat → increment unread + notify + badge
+        useFriendsStore.getState().incrementUnread(newMessage.sender_id);
+        const newTotal = useFriendsStore.getState().totalUnread;
+        const senderName = newMessage.sender_name || newMessage.sender_username || 'Someone';
+        showNativeNotification(
+            `New message from ${senderName}`,
+            newMessage.content || '(attachment)',
+            { skipFocusCheck: true }
+        );
+        updateBadgeCount(newTotal);
+    }
+};
+
+const handleFriendRequestReceived = (data) => {
+    console.log("🤝 Real-time Friend Request Received:", data);
+    useFriendsStore.getState().fetchPendingRequests();
+    showNativeNotification(
+        "New Friend Request",
+        "Someone wants to connect with you on Nexus!",
+        { skipFocusCheck: true }
+    );
+};
+
+const handleDMUpdated = (updatedMsg) => {
+    console.log('📝 DM updated:', updatedMsg);
+    if (!updatedMsg._id) return;
+    useFriendsStore.setState(state => ({
+        dmMessages: state.dmMessages.map(msg =>
+            msg._id === updatedMsg._id ? { ...msg, ...updatedMsg } : msg
+        ),
+    }));
+};
+
+const handleGameStart = (gameData) => {
+    console.log('🎮 Game starting!', gameData);
+    const currentUserId = JSON.parse(localStorage.getItem('user') || '{}')._id;
+    
+    // Determine this player's role
+    const isChallenger = gameData.challenger_id === currentUserId;
+    const opponentName = isChallenger ? gameData.opponent_name : gameData.challenger_name;
+    
+    // Import and set the UI store to navigate to the game
+    const { useUIStore } = require('./uiStore');
+    useUIStore.getState().setActiveMultiplayerGame({
+        gameRoomId: gameData.game_room_id,
+        gameType: gameData.game_type,
+        challengeId: gameData.challenge_id,
+        challengerId: gameData.challenger_id,
+        opponentId: gameData.opponent_id,
+        challengerName: gameData.challenger_name,
+        opponentName: gameData.opponent_name,
+        myRole: isChallenger ? 'challenger' : 'opponent',
+        myName: isChallenger ? gameData.challenger_name : gameData.opponent_name,
+        theirName: opponentName,
+    });
+};
+
+const handleDMReactionUpdated = (data) => {
+    if (data?.message_id && data?.reactions !== undefined) {
+        useFriendsStore.getState().updateDMMessage(data.message_id, { reactions: data.reactions });
+    }
+};

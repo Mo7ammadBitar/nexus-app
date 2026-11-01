@@ -374,40 +374,18 @@ const ChatArea = () => {
                 console.error('Failed to join channel:', err);
             });
 
-            // Message Listener
-            socket.off('new_message');
-            socket.on('new_message', (message) => {
+            // Message Listener (named handler)
+            const handleNewMessage = (message) => {
                 console.log("📩 Received Server Message via Socket:", message);
                 if (message.channel_id === currentChannel._id) {
                     addMessage(message);
                 }
-            });
+            };
+            socket.off('new_message', handleNewMessage);
+            socket.on('new_message', handleNewMessage);
 
-            // Reaction Listener
-            socket.off('message_reaction_updated');
-            socket.on('message_reaction_updated', (data) => {
-                console.log("👍 Received reaction update via Socket:", data);
-                if (data?.message_id && data?.reactions !== undefined) {
-                    if (!data.channel_id || data.channel_id === currentChannel._id) {
-                        updateMessage(data.message_id, { reactions: data.reactions });
-                    }
-                }
-            });
-
-            // Message Deletion Listener
-            socket.off('message_deleted');
-            socket.on('message_deleted', (data) => {
-                console.log("🗑️ Received message deleted via Socket:", data);
-                if (data?.message_id) {
-                    if (!data.channel_id || data.channel_id === currentChannel._id) {
-                        removeMessage(data.message_id);
-                    }
-                }
-            });
-
-            // Typing Listeners
-            socket.off('user_typing');
-            socket.on('user_typing', (data) => {
+            // Typing Listeners (named handlers)
+            const handleUserTyping = (data) => {
                 if (data.channel_id === currentChannel._id && data.user_id !== user?._id) {
                     setTypingUsers(prev => {
                         if (!prev.find(u => u.user_id === data.user_id)) {
@@ -416,31 +394,39 @@ const ChatArea = () => {
                         return prev;
                     });
                 }
-            });
+            };
 
-            socket.off('user_stopped_typing');
-            socket.on('user_stopped_typing', (data) => {
+            const handleUserStoppedTyping = (data) => {
                 if (data.channel_id === currentChannel._id) {
                     setTypingUsers(prev => prev.filter(u => u.user_id !== data.user_id));
                 }
-            });
+            };
+
+            socket.off('user_typing', handleUserTyping);
+            socket.on('user_typing', handleUserTyping);
+
+            socket.off('user_stopped_typing', handleUserStoppedTyping);
+            socket.on('user_stopped_typing', handleUserStoppedTyping);
+
+            return () => {
+                // Leave channel on cleanup
+                if (currentChannel) {
+                    leaveChannel(currentChannel._id);
+                }
+                socket.off('new_message', handleNewMessage);
+                socket.off('user_typing', handleUserTyping);
+                socket.off('user_stopped_typing', handleUserStoppedTyping);
+                setTypingUsers([]);
+            };
         }
 
         return () => {
-            // Leave channel on cleanup
             if (currentChannel) {
                 leaveChannel(currentChannel._id);
             }
-            if (socket) {
-                socket.off('new_message');
-                socket.off('message_reaction_updated');
-                socket.off('message_deleted');
-                socket.off('user_typing');
-                socket.off('user_stopped_typing');
-            }
             setTypingUsers([]);
         };
-    }, [currentChannel, addMessage, updateMessage, removeMessage, user?._id]);
+    }, [currentChannel, addMessage, user?._id]);
 
     const handleSend = async () => {
         if ((!messageText.trim() && selectedFiles.length === 0) || !currentChannel || isSending || isMuted || isChannelRestricted) return;

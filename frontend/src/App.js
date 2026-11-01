@@ -53,28 +53,33 @@ function App() {
             // Connect to chat socket
             const socket = connectChatSocket();
 
+            let handleConnect = null;
+            let handlePresenceUpdate = null;
+
             if (socket) {
-                // Wait for connection if strictly needed, or emit if already connected
-                if (socket.connected) {
+                // Reconnect & room join handler
+                handleConnect = () => {
                     console.log("Joining my personal room:", user._id);
                     socket.emit("join_user_room", user._id);
-                } else {
-                    socket.on('connect', () => {
-                        console.log("Joining my personal room (on connect):", user._id);
-                        socket.emit("join_user_room", user._id);
-                    });
-                }
+                };
 
-                // Presence Listener
-                socket.off('presence_update'); // Prevent duplicates
-                socket.on('presence_update', (data) => {
+                if (socket.connected) {
+                    handleConnect();
+                }
+                socket.off('connect', handleConnect);
+                socket.on('connect', handleConnect);
+
+                // Presence Listener with named handler
+                handlePresenceUpdate = (data) => {
                     // console.log("Presence update:", data);
                     const { user_id, status } = data;
                     if (user_id && status) {
                         useServerStore.getState().updateMemberStatus(user_id, status);
                         useFriendsStore.getState().updateFriendStatus(user_id, status);
                     }
-                });
+                };
+                socket.off('presence_update', handlePresenceUpdate);
+                socket.on('presence_update', handlePresenceUpdate);
 
                 // Setup store listeners
                 setupSocketListeners(socket);
@@ -110,10 +115,8 @@ function App() {
             return () => {
                 window.removeEventListener('focus', handleFocus);
                 if (socket) {
-                    socket.off('presence_update');
-                    socket.off('dm_new_message');
-                    socket.off('message_reaction_updated');
-                    socket.off('message_deleted');
+                    if (handleConnect) socket.off('connect', handleConnect);
+                    if (handlePresenceUpdate) socket.off('presence_update', handlePresenceUpdate);
                 }
             };
         }

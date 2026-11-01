@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { serversAPI, messagesAPI } from '../services/api';
+import { joinChannel } from '../services/socket';
 import i18n from '../i18n';
 
 // Import friendsStore to close DM when selecting a server
@@ -416,26 +417,16 @@ export const useServerStore = create((set, get) => ({
     // Setup socket listeners for real-time channel updates
     setupSocketListeners: (socket) => {
         if (!socket) return;
+        activeSocket = socket;
 
-        socket.off('message_reaction_updated');
-        socket.on('message_reaction_updated', (data) => {
-            if (data?.message_id && data?.reactions !== undefined) {
-                const currentChan = get().currentChannel;
-                if (!data.channel_id || !currentChan || data.channel_id === currentChan._id) {
-                    get().updateMessage(data.message_id, { reactions: data.reactions });
-                }
-            }
-        });
+        socket.off('message_reaction_updated', handleMessageReactionUpdated);
+        socket.on('message_reaction_updated', handleMessageReactionUpdated);
 
-        socket.off('message_deleted');
-        socket.on('message_deleted', (data) => {
-            if (data?.message_id) {
-                const currentChan = get().currentChannel;
-                if (!data.channel_id || !currentChan || data.channel_id === currentChan._id) {
-                    get().removeMessage(data.message_id);
-                }
-            }
-        });
+        socket.off('message_deleted', handleMessageDeleted);
+        socket.on('message_deleted', handleMessageDeleted);
+
+        socket.off('connect', handleSocketReconnect);
+        socket.on('connect', handleSocketReconnect);
     },
 
     // Clear current server
@@ -450,3 +441,40 @@ export const useServerStore = create((set, get) => ({
         });
     },
 }));
+
+// Stable named handlers for socket events in serverStore
+let activeSocket = null;
+
+const handleMessageReactionUpdated = (data) => {
+    if (data?.message_id && data?.reactions !== undefined) {
+        const currentChan = useServerStore.getState().currentChannel;
+        if (!data.channel_id || !currentChan || data.channel_id === currentChan._id) {
+            useServerStore.getState().updateMessage(data.message_id, { reactions: data.reactions });
+        }
+    }
+};
+
+const handleMessageDeleted = (data) => {
+    if (data?.message_id) {
+        const currentChan = useServerStore.getState().currentChannel;
+        if (!data.channel_id || !currentChan || data.channel_id === currentChan._id) {
+            useServerStore.getState().removeMessage(data.message_id);
+        }
+    }
+};
+
+const handleSocketReconnect = () => {
+    if (activeSocket) {
+        activeSocket.off('message_reaction_updated', handleMessageReactionUpdated);
+        activeSocket.on('message_reaction_updated', handleMessageReactionUpdated);
+
+        activeSocket.off('message_deleted', handleMessageDeleted);
+        activeSocket.on('message_deleted', handleMessageDeleted);
+
+        const currentChan = useServerStore.getState().currentChannel;
+        if (currentChan?._id) {
+            joinChannel(currentChan._id).catch(() => {});
+        }
+    }
+};
+

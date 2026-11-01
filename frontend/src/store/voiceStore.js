@@ -22,26 +22,35 @@ export const useVoiceStore = create((set) => ({
     // Setup socket listeners for DM Calls on the main chat socket
     setupVoiceSocketListeners: (socket) => {
         if (!socket) return;
-        const set = useVoiceStore.setState;
 
-        socket.off('incoming_dm_call');
-        socket.on('incoming_dm_call', (callerData) => {
-            set({ incomingCall: callerData });
-        });
+        socket.off('incoming_dm_call', handleIncomingDMCall);
+        socket.on('incoming_dm_call', handleIncomingDMCall);
 
-        socket.off('dm_call_declined');
-        socket.on('dm_call_declined', (data) => {
-            set({ callDeclinedBy: data.declined_by });
-        });
+        socket.off('dm_call_declined', handleDMCallDeclined);
+        socket.on('dm_call_declined', handleDMCallDeclined);
 
-        socket.off('dm_call_accepted');
-        socket.on('dm_call_accepted', (data) => {
-            set({ callAnsweredBy: data.accepted_by });
-        });
+        socket.off('dm_call_accepted', handleDMCallAccepted);
+        socket.on('dm_call_accepted', handleDMCallAccepted);
 
-        socket.off('dm_call_cancelled');
-        socket.on('dm_call_cancelled', () => {
-            set({ incomingCall: null });
-        });
+        socket.off('dm_call_cancelled', handleDMCallCancelled);
+        socket.on('dm_call_cancelled', handleDMCallCancelled);
     }
 }));
+
+// Stable named handlers for voiceStore socket events
+const handleIncomingDMCall = (callerData) => {
+    useVoiceStore.setState({ incomingCall: callerData });
+};
+
+const handleDMCallDeclined = (data) => {
+    useVoiceStore.setState({ callDeclinedBy: data.declined_by });
+};
+
+const handleDMCallAccepted = (data) => {
+    useVoiceStore.setState({ callAnsweredBy: data.accepted_by });
+};
+
+const handleDMCallCancelled = () => {
+    useVoiceStore.setState({ incomingCall: null });
+};
+
